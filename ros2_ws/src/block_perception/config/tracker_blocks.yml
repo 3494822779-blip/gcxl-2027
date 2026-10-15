@@ -1,0 +1,44 @@
+%YAML:1.0
+# NvDCF configuration for a single block camera (DeepStream 7.1).
+BaseConfig:
+  minDetectorConfidence: 0.01
+TargetManagement:
+  enableBboxUnClipping: 0
+  preserveStreamUpdateOrder: 1
+  maxTargetsPerStream: 64
+  minIouDiff4NewTarget: 0.7
+  minTrackerConfidence: 0.4
+  probationAge: 2
+  maxShadowTrackingAge: 30
+  earlyTerminationAge: 1
+TrajectoryManagement:
+  useUniqueID: 1
+DataAssociator:
+  dataAssociatorType: 0
+  associationMatcherType: 1
+  checkClassMatch: 1
+  minMatchingScore4Overall: 0.4
+  minMatchingScore4SizeSimilarity: 0.3
+  minMatchingScore4Iou: 0.2
+  minMatchingScore4VisualSimilarity: 0.5
+  matchingScoreWeight4VisualSimilarity: 0.4
+  matchingScoreWeight4SizeSimilarity: 0.3
+  matchingScoreWeight4Iou: 0.3
+  tentativeDetectorConfidence: 0.01
+  minMatchingScore4TentativeIou: 0.5
+StateEstimator:
+  stateEstimatorType: 1
+  processNoiseVar4Loc: 2.0
+  processNoiseVar4Size: 1.0
+  processNoiseVar4Vel: 0.1
+  measurementNoiseVar4Detector: 3.0
+  measurementNoiseVar4Tracker: 8.0
+VisualTracker:
+  visualTrackerType: 1
+  useColorNames: 1
+  useHog: 0
+  featureImgSizeLevel: 2
+  featureFocusOffsetFactor_y: 0.0
+  filterLr: 0.075
+  filterChannelWeightsLr: 0.1
+  gaussianSigma: 0.75

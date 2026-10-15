@@ -1,0 +1,23 @@
+detector:
+  ros__parameters:
+    confidence_threshold: 0.25
+filter:
+  ros__parameters:
+    process_noise: 100.0
+    measurement_noise: 16.0
+    initial_variance: 100.0
+    prediction_timeout: 0.4
+alignment:
+  ros__parameters:
+    deadzone_x: 0.04
+    deadzone_y: 0.04
+    yaw_gain: -0.5
+    pitch_gain: -0.5
+    max_yaw_rate: 0.3
+    max_pitch_rate: 0.2
+    pitch_min: -0.8
+    pitch_max: -0.5
+    pitch_timeout: 0.25
+    input_timeout: 0.25
+    hold_seconds: 0.3
+    pitch_joint: camera_pitch

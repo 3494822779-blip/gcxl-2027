@@ -1,0 +1,28 @@
+# Replace absolute model/parser/label paths before launching.
+# This requires a YOLO model trained for the FOUR actual block categories.
+[property]
+gpu-id=0
+net-scale-factor=0.0039215697906911373
+model-color-format=0
+onnx-file=/absolute/path/blocks.onnx
+model-engine-file=/absolute/path/blocks_b1_gpu0_fp16.engine
+labelfile-path=/absolute/path/blocks_labels.txt
+batch-size=1
+network-mode=2
+num-detected-classes=4
+interval=0
+gie-unique-id=1
+process-mode=1
+network-type=0
+cluster-mode=2
+maintain-aspect-ratio=1
+symmetric-padding=1
+parse-bbox-func-name=NvDsInferParseYolo
+custom-lib-path=/absolute/path/DeepStream-Yolo-master/plugins/yolo/nvdsinfer_custom_impl_Yolo/libnvdsinfer_custom_impl_Yolo.so
+engine-create-func-name=NvDsInferYoloCudaEngineGet
+
+[class-attrs-all]
+nms-iou-threshold=0.45
+# Fixed candidate floor; ROS confidence_threshold filters candidates online without engine rebuild.
+pre-cluster-threshold=0.01
+topk=300

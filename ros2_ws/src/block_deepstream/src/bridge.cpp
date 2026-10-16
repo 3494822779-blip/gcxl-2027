@@ -25,7 +25,8 @@ class Bridge : public rclcpp::Node {
   GstBus *bus_ = nullptr;
   std::mutex mutex_;
   std::map<GstClockTime, Frame> pending_;
-  uint64_t sequence_ = 0;
+  GstClockTime last_pts_ = 0;
+  bool have_pts_ = false;
   int width_, height_;
   std::atomic<double> confidence_{0.25};
   rclcpp::Publisher<Frame>::SharedPtr pub_;
@@ -122,10 +123,18 @@ class Bridge : public rclcpp::Node {
     for (int y = 0; y < height_; ++y)
       std::memcpy(map.data + size_t(y) * width_ * 3, im.data.data() + size_t(y) * im.step, width_ * 3);
     gst_buffer_unmap(buffer, &map);
-    // Private monotonic PTS correlates pipeline frames. ROS acquisition stamps are preserved.
-    GstClockTime pts = (++sequence_) * GST_SECOND / 30;
+    // PTS tracks the real ROS acquisition timestamp so tracker motion models see true elapsed
+    // time even when frames are dropped or arrive at a variable rate; it must still be strictly
+    // monotonic for GStreamer/nvtracker, so out-of-order or duplicate stamps are nudged forward.
+    const auto &stamp = frame.image.header.stamp;
+    GstClockTime wanted = static_cast<GstClockTime>(stamp.sec) * GST_SECOND +
+                          static_cast<GstClockTime>(stamp.nanosec);
+    GstClockTime pts = (have_pts_ && wanted <= last_pts_) ? last_pts_ + 1 : wanted;
+    GstClockTime duration = have_pts_ ? (pts - last_pts_) : GST_SECOND / 30;
+    last_pts_ = pts;
+    have_pts_ = true;
     GST_BUFFER_PTS(buffer) = pts;
-    GST_BUFFER_DURATION(buffer) = GST_SECOND / 30;
+    GST_BUFFER_DURATION(buffer) = duration;
     {
       std::lock_guard<std::mutex> guard(mutex_);
       if (pending_.size() >= 8) { gst_buffer_unref(buffer); return; }
@@ -184,7 +193,9 @@ class Bridge : public rclcpp::Node {
     pub_ = create_publisher<Frame>(tracking ? "tracks" : "detections", rclcpp::SensorDataQoS());
     gst_init(nullptr, nullptr);
     // Separate process/pipeline per algorithm; tracker receives ROS pixels + injected boxes.
-    std::string desc = "appsrc name=input is-live=true format=time block=false ! videoconvert ! video/x-raw,format=RGBA ! nvvideoconvert ! video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 nvstreammux name=mux batch-size=1 live-source=true width=" + std::to_string(width_) + " height=" + std::to_string(height_) + " batched-push-timeout=40000 ! " + (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! fakesink sync=false async=false";
+    // nvvideoconvert accepts system-memory RGB directly, so the CPU-side videoconvert/RGBA
+    // hop (and its extra full-frame copy) that used to sit in front of it is unnecessary.
+    std::string desc = "appsrc name=input is-live=true format=time block=false ! nvvideoconvert ! video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 nvstreammux name=mux batch-size=1 live-source=true width=" + std::to_string(width_) + " height=" + std::to_string(height_) + " batched-push-timeout=40000 ! " + (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! fakesink sync=false async=false";
     GError *error = nullptr;
     pipeline_ = gst_parse_launch(desc.c_str(), &error);
     if (error) {

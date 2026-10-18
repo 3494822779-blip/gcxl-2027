@@ -21,3 +21,7 @@ alignment:
     input_timeout: 0.25
     hold_seconds: 0.3
     pitch_joint: camera_pitch
+
+gripper:
+  ros__parameters:
+    input_timeout: 0.25

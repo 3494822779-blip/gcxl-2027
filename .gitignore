@@ -1,0 +1,6 @@
+# Local ROS 2 build outputs
+ros2_ws/build_gcxl/
+ros2_ws/install_gcxl/
+ros2_ws/log_gcxl/
+__pycache__/
+.pytest_cache/

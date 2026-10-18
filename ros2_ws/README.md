@@ -1,6 +1,6 @@
 # ROS 2 物块对准抓取视觉感知
 
-代码直接位于当前 DeepStream-Yolo 工程内，支持 ROS 2 Humble + DeepStream 7.1（Jetson）。只输出视觉对准信息和抓取请求，不控制电机。已有 COCO 模型不是四类物块模型；部署前必须提供训练好的四类 YOLO ONNX 和对应标签。
+代码直接位于当前 DeepStream-Yolo 工程内，支持 ROS 2 Humble + DeepStream 7.1（Jetson）。只输出视觉对准信息和抓取请求，不控制电机。已接入 `models/yolov8n_gcxl_aug/best.pt` 导出的四类 YOLOv8n 模型，类别顺序为 `class_0`、`class_1`、`class_2`、`class_3`；实际物块名称仍需对应训练数据确认。
 
 ## 节点与接口
 
@@ -34,18 +34,30 @@ target/reset [std_msgs/Bool] → selector
 ## 编译与运行
 
 ```bash
-cd /home/nvidia/project/DeepStream-Yolo-master
+cd /home/nvidia/project/gcxl-2027
 source /opt/ros/humble/setup.bash
 # DeepStream SDK/CUDA 和 YOLO parser 按原工程要求安装/编译。
 # 系统依赖（foxglove_bridge 已安装也可重复执行）：
 sudo apt-get install ros-humble-foxglove-msgs ros-humble-foxglove-bridge \
   python3-numpy python3-opencv python3-pytest libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-colcon --log-base ros2_ws/log build --base-paths ros2_ws/src \
-  --build-base ros2_ws/build --install-base ros2_ws/install
-source ros2_ws/install/setup.bash
+colcon --log-base ros2_ws/log_gcxl build --base-paths ros2_ws/src \
+  --build-base ros2_ws/build_gcxl --install-base ros2_ws/install_gcxl
+source ros2_ws/install_gcxl/setup.bash
 ```
 
-编辑 `src/block_perception/config/infer_blocks.txt` 中的绝对路径：四类 ONNX、独立 engine 输出文件、四行标签文件、当前工程 parser `.so`。不要覆盖现有 COCO engine，也不能只把 COCO 模型的 `num-detected-classes` 改成 4。类别名和顺序必须与训练模型一致。模板标签 `block_class_0..3` 是占位名。
+`ros2_ws/src/block_perception/config/infer_blocks.txt` 已配置当前项目的 ONNX、独立 FP16 engine、训练模型标签和 parser 路径。迁移目录后需要同步修改这些绝对路径并重新编译。构建采用 `build_gcxl/install_gcxl`，避免复用迁移前含旧绝对路径的 CMake 缓存。
+
+重新导出和构建模型：
+
+```bash
+cd /home/nvidia/project/gcxl-2027/models/yolov8n_gcxl_aug
+/usr/bin/python3 ../../utils/export_yoloV8.py -w best.pt
+/usr/src/tensorrt/bin/trtexec --onnx=best.onnx \
+  --saveEngine=best_b1_gpu0_fp16.engine --fp16 --skipInference
+cd ../..
+```
+
+导出器生成 `[1,8400,6]` 的 xyxy/score/class 输出供 DeepStream parser 使用；不能直接替换为 Ultralytics 默认输出格式。TensorRT engine 应在部署设备上生成。
 
 ```bash
 # 内置 USB 相机；也可 source:=/absolute/path/video.mp4
@@ -116,14 +128,34 @@ ros2 bag play block_session --clock --topics /tracks /camera/image_raw /camera/j
 
 ```bash
 source /opt/ros/humble/setup.bash
-source ros2_ws/install/setup.bash
+source ros2_ws/install_gcxl/setup.bash
 # 禁用环境中与旧版 pytest 冲突的第三方自动插件；不影响这些测试。
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pytest -q ros2_ws/src/block_perception/test
-# Jetson 上实测 nvtracker：发布带检测框的 ROS 图像，验证稳定 ID 和采集时间戳。
+# Jetson 上实测 detector 和 nvtracker：验证模型加载、图像往返、稳定 ID 和采集时间戳。
 BLOCK_TEST_DEEPSTREAM=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pytest -q \
   ros2_ws/src/block_perception/test/test_deepstream.py
+# 可选：增加 BLOCK_TEST_IMAGE=/absolute/path/positive.png，要求真实图片检测到至少一个目标。
 ```
 
-当前验证覆盖：三个包编译、锁定不切换、卡尔曼抑噪/预测、超时归零、禁止预测触发抓取、真实 pitch 条件、单次触发、动态参数校验、Foxglove 消息构造/时间戳匹配、实际 nvtracker 管线。四类 YOLO 检测效果和实体抓取距离尚需实际模型、相机和云台反馈进行联调。
+当前验证覆盖：三个包编译、锁定不切换、卡尔曼抑噪/预测、超时归零、禁止预测触发抓取、真实 pitch 条件、单次触发、动态参数校验、Foxglove 消息构造/时间戳匹配、实际 nvtracker 管线。空白图像的 detector 测试只验证模型加载与管线通信；四类检测精度和实体抓取距离仍需实际场景图像、相机和云台反馈进行联调。
 
-环境说明：本次验证时系统未安装 `foxglove_msgs`，标注测试使用官方 ROS apt 包解包后的消息类型完成；正式运行前执行上述 apt 安装命令。`foxglove_bridge` 已在本机安装。
+环境依赖包括 `foxglove_msgs` 和 `foxglove_bridge`，可使用上述 apt 命令安装。
+
+## 左右夹爪舵机角度接口（计算方法待实现）
+
+新增独立节点 `gripper`，默认随 launch 启动，也可 `ros2 run block_perception gripper`。
+订阅 `/target/raw` 和 `/tracks`，按同一采集时间戳、相机 frame_id 和锁定 track_id 获取真实观测框，
+提取 `left_edge_px=x`、`right_edge_px=x+width`。不会选其他 ID 的框或使用漏检预测框计算。
+
+发布 `/gripper/angles`（`block_interfaces/msg/GripperAngles`），包含目标 ID、原始图像尺寸、
+左右边界、左右舵机角度（rad）、就绪状态及原因。公式预留在
+`src/block_perception/block_perception/gripper.py` 的 `calculate_angles()`：
+当前返回 None，不进行角度计算；有合法边界时 `bounds_valid=true`，
+但 `angles_ready=false`、角度为 NaN、`reason=calculation_not_implemented`。
+未来仅需实现该函数，返回 `(left_rad, right_rad)`，无需修改检测、跟踪或对准节点。
+物理舵机零点、方向、开合范围与标定由后续计算方法确定，当前不设假值。
+
+该话题是视觉角度建议，不控制舵机，也不改变原有抓取请求条件。执行方未来必须要求
+`angles_ready=true` 且消息采集时间未超过 `valid_for_sec`；对准抓取请求仍来自
+`/alignment/command`。输入中断后节点发布过期状态，`input_timeout` 默认 0.25 秒，支持在线修改。
+Foxglove 可直接查看边界/就绪状态，录包命令加上 `/gripper/angles` 即可保存输出。

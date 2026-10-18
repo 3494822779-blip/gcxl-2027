@@ -28,7 +28,7 @@ def generate_launch_description():
                             parameters=[LaunchConfiguration('params'), common, dimensions,
                                         {'config_file': LaunchConfiguration(cfg)}],
                             condition=IfCondition(LaunchConfiguration(name)), output='screen'))
-    for name in ['selector', 'filter', 'alignment', 'annotations']:
+    for name in ['selector', 'filter', 'alignment', 'annotations', 'gripper']:
         kwargs = {'condition': IfCondition(LaunchConfiguration(name))} if name == 'annotations' else {}
         actions.append(Node(package='block_perception', executable=name, name=name,
                             parameters=[LaunchConfiguration('params'), common], output='screen', **kwargs))

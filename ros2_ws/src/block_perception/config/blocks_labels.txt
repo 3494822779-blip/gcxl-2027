@@ -1,4 +1,4 @@
-block_class_0
-block_class_1
-block_class_2
-block_class_3
+class_0
+class_1
+class_2
+class_3

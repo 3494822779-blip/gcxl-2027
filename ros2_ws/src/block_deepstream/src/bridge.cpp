@@ -193,9 +193,9 @@ class Bridge : public rclcpp::Node {
     pub_ = create_publisher<Frame>(tracking ? "tracks" : "detections", rclcpp::SensorDataQoS());
     gst_init(nullptr, nullptr);
     // Separate process/pipeline per algorithm; tracker receives ROS pixels + injected boxes.
-    // nvvideoconvert accepts system-memory RGB directly, so the CPU-side videoconvert/RGBA
-    // hop (and its extra full-frame copy) that used to sit in front of it is unnecessary.
-    std::string desc = "appsrc name=input is-live=true format=time block=false ! nvvideoconvert ! video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 nvstreammux name=mux batch-size=1 live-source=true width=" + std::to_string(width_) + " height=" + std::to_string(height_) + " batched-push-timeout=40000 ! " + (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! fakesink sync=false async=false";
+    // Jetson defaults to VIC, which cannot transform RGB input. Select GPU explicitly
+    // to convert ROS rgb8 frames directly without a CPU-side RGBA intermediate.
+    std::string desc = "appsrc name=input is-live=true format=time block=false ! nvvideoconvert compute-hw=1 ! video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 nvstreammux name=mux batch-size=1 live-source=true width=" + std::to_string(width_) + " height=" + std::to_string(height_) + " batched-push-timeout=40000 ! " + (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! fakesink sync=false async=false";
     GError *error = nullptr;
     pipeline_ = gst_parse_launch(desc.c_str(), &error);
     if (error) {

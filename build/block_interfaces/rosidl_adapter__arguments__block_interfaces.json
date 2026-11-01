@@ -1,0 +1,10 @@
+{
+  "package_name": "block_interfaces",
+  "non_idl_tuples": [
+    "/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces:msg/Box.msg",
+    "/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces:msg/Frame.msg",
+    "/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces:msg/Target.msg",
+    "/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces:msg/AlignmentCommand.msg",
+    "/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces:msg/GripperAngles.msg"
+  ]
+}

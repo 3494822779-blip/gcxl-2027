@@ -290,12 +290,29 @@ class Camera(Node):
         self.frame_id = self.declare_parameter('frame_id', 'camera_optical_frame', fixed).value
         if self.width <= 0 or self.height <= 0 or not math.isfinite(fps) or fps <= 0:
             raise ValueError('Invalid camera dimensions/fps')
-        self.capture = cv2.VideoCapture(source)
+        # Match rune_aim's USB camera path: many UVC cameras expose a valid
+        # MJPEG mode but produce a blank/invalid stream when OpenCV selects
+        # the default raw format. Use an explicit GStreamer pipeline.
+        # A pip-installed OpenCV in ~/.local may shadow the system one and lacks
+        # GStreamer; fall back to V4L2 with MJPG forced (YUYV is only 9 fps at 720p).
+        is_device = isinstance(source, str) and source.startswith('/dev/video')
+        has_gst = 'GStreamer:                   YES' in cv2.getBuildInformation()
+        if is_device and has_gst:
+            pipeline = (f'v4l2src device={source} ! '
+                        f'image/jpeg,width={self.width},height={self.height},framerate={int(fps)}/1 ! '
+                        'jpegdec ! videoconvert ! video/x-raw,format=BGR ! '
+                        'appsink drop=true max-buffers=1 sync=false')
+            self.capture = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        elif is_device:
+            self.capture = cv2.VideoCapture(source, cv2.CAP_V4L2)
+            self.capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+            self.capture.set(cv2.CAP_PROP_FPS, fps)
+        else:
+            self.capture = cv2.VideoCapture(source)
         if not self.capture.isOpened():
             raise RuntimeError(f'Cannot open camera/video source: {source}')
-        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        self.capture.set(cv2.CAP_PROP_FPS, fps)
         self.pub = self.create_publisher(Image, 'camera/image_raw', qos_profile_sensor_data)
         self.timer = self.create_timer(1/fps, self.read)
 
@@ -318,3 +335,63 @@ class Camera(Node):
 
 
 def camera_main(): run(Camera)
+
+
+class StreamGateway(Node):
+    """Stable, client-friendly topics for custom Foxglove/WebSocket clients."""
+    def __init__(self):
+        super().__init__('stream_gateway')
+        from sensor_msgs.msg import Image, CompressedImage
+        from std_msgs.msg import String
+        from rcl_interfaces.msg import Log
+        import json
+        self.Image, self.CompressedImage, self.String, self.json = Image, CompressedImage, String, json
+        self.image_pub = self.create_publisher(CompressedImage, 'stream/image/jpeg', 10)
+        self.detection_pub = self.create_publisher(String, 'stream/detections', 10)
+        self.log_pub = self.create_publisher(String, 'stream/log', 50)
+        # Lower these to cut bandwidth/latency on the Foxglove link (stream_width 0 = original size).
+        self.stream_width = self.declare_parameter('stream_width', 640).value
+        self.stream_quality = self.declare_parameter('stream_quality', 60).value
+        stream_fps = self.declare_parameter('stream_fps', 20.).value
+        self.min_period_ns = int(1e9 / stream_fps) if stream_fps > 0 else 0
+        self.last_ns = 0
+        self.create_subscription(self.Image, 'camera/image_raw', self.image, qos_profile_sensor_data)
+        self.create_subscription(Frame, 'tracks', self.frame, qos_profile_sensor_data)
+        self.create_subscription(Log, '/rosout', self.rosout, 50)
+
+    def image(self, msg):
+        import cv2, numpy as np
+        now = self.get_clock().now().nanoseconds
+        if now - self.last_ns < self.min_period_ns:
+            return
+        self.last_ns = now
+        try:
+            channels = 1 if msg.encoding in ('mono8', '8UC1') else 3
+            arr = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, channels)
+            if channels == 3 and msg.encoding == 'rgb8':
+                arr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+            if 0 < self.stream_width < msg.width:
+                arr = cv2.resize(arr, (self.stream_width, msg.height * self.stream_width // msg.width),
+                                 interpolation=cv2.INTER_AREA)
+            ok, encoded = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), int(self.stream_quality)])
+            if ok:
+                out = self.CompressedImage(header=msg.header, format='jpeg', data=encoded.tobytes())
+                self.image_pub.publish(out)
+        except Exception as exc:
+            self.get_logger().warning(f'image encode failed: {exc}')
+
+    def frame(self, msg):
+        payload = {'stamp': {'sec': msg.image.header.stamp.sec, 'nanosec': msg.image.header.stamp.nanosec},
+                   'width': msg.image.width, 'height': msg.image.height,
+                   'boxes': [{'track_id': b.track_id, 'class_id': b.class_id, 'confidence': b.confidence,
+                              'x': b.x, 'y': b.y, 'width': b.width, 'height': b.height} for b in msg.boxes]}
+        self.detection_pub.publish(self.String(data=self.json.dumps(payload, separators=(',', ':'))))
+
+    def rosout(self, msg):
+        level = {10: 'DEBUG', 20: 'INFO', 30: 'WARN', 40: 'ERROR', 50: 'FATAL'}.get(msg.level, str(msg.level))
+        self.log_pub.publish(self.String(data=self.json.dumps({'level': level, 'name': msg.name,
+                                                               'message': msg.msg, 'stamp': self.get_clock().now().nanoseconds // 1000000000},
+                                                              ensure_ascii=False, separators=(',', ':'))))
+
+
+def stream_gateway_main(): run(StreamGateway)

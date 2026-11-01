@@ -1,0 +1,4 @@
+source;share/block_deepstream/local_setup.bash
+source;share/block_deepstream/local_setup.dsv
+source;share/block_deepstream/local_setup.sh
+source;share/block_deepstream/local_setup.zsh

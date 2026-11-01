@@ -195,7 +195,7 @@ class Bridge : public rclcpp::Node {
     // Separate process/pipeline per algorithm; tracker receives ROS pixels + injected boxes.
     // Jetson defaults to VIC, which cannot transform RGB input. Select GPU explicitly
     // to convert ROS rgb8 frames directly without a CPU-side RGBA intermediate.
-    std::string desc = "appsrc name=input is-live=true format=time block=false ! nvvideoconvert compute-hw=1 ! video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 nvstreammux name=mux batch-size=1 live-source=true width=" + std::to_string(width_) + " height=" + std::to_string(height_) + " batched-push-timeout=40000 ! " + (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! fakesink sync=false async=false";
+    std::string desc = "appsrc name=input is-live=true format=time block=false ! nvvideoconvert compute-hw=1 ! video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 nvstreammux name=mux batch-size=1 live-source=true width=" + std::to_string(width_) + " height=" + std::to_string(height_) + " batched-push-timeout=40000 ! " + (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! nvdsosd display-bbox=true display-text=true ! nvegltransform ! nveglglessink sync=false async=false";
     GError *error = nullptr;
     pipeline_ = gst_parse_launch(desc.c_str(), &error);
     if (error) {

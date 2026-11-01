@@ -1,0 +1,18 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from block_interfaces/msg/Frame.msg
+// generated code does not contain a copyright notice
+
+#include "block_interfaces/msg/Box.idl"
+#include "sensor_msgs/msg/Image.idl"
+
+module block_interfaces {
+  module msg {
+    @verbatim (language="comment", text=
+      "Image and boxes share exactly the same acquisition timestamp and pixel coordinates.")
+    struct Frame {
+      sensor_msgs::msg::Image image;
+
+      sequence<block_interfaces::msg::Box> boxes;
+    };
+  };
+};

@@ -4,3 +4,8 @@ ros2_ws/install_gcxl/
 ros2_ws/log_gcxl/
 __pycache__/
 .pytest_cache/
+
+# Compiled plugin artifacts
+*.o
+*.so
+*.pyc

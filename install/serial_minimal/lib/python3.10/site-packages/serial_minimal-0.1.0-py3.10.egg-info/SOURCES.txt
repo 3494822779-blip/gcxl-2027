@@ -1,0 +1,13 @@
+package.xml
+setup.cfg
+setup.py
+../../../build/serial_minimal/serial_minimal.egg-info/PKG-INFO
+../../../build/serial_minimal/serial_minimal.egg-info/SOURCES.txt
+../../../build/serial_minimal/serial_minimal.egg-info/dependency_links.txt
+../../../build/serial_minimal/serial_minimal.egg-info/entry_points.txt
+../../../build/serial_minimal/serial_minimal.egg-info/requires.txt
+../../../build/serial_minimal/serial_minimal.egg-info/top_level.txt
+../../../build/serial_minimal/serial_minimal.egg-info/zip-safe
+resource/serial_minimal
+serial_minimal/__init__.py
+serial_minimal/serial_node.py

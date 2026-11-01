@@ -1,7 +1,7 @@
 # GCXL YOLOv8n augmented model
 
-- Source: `rog@192.168.31.152:/media/rog/D0EEA8CAEEA8A9E4/gcxl_2027/runs/detect/yolov8n_gcxl_aug/weights/best.pt`
-- Weight SHA256: `a03ed45fdd4ff523828ffa7e66f92b9628069a42d8cad6e7fbc15dc16b00a16e`
+- Original source: `rog@192.168.31.152:/media/rog/D0EEA8CAEEA8A9E4/gcxl_2027/runs/detect/yolov8n_gcxl_aug/weights/best.pt`
+- Current local weight SHA256 (2026-11-01): `ee06754ee73c6653872886af698764ef67263312cbada2373c726cb4cd3ef2ee`
 - Classes, in order: `class_0`, `class_1`, `class_2`, `class_3`. These are the actual names stored in the checkpoint, not inferred physical labels.
 - Export: repository `utils/export_yoloV8.py`, opset 17, fixed batch 1, input `input` `[1,3,640,640]`, output `output` `[1,8400,6]` (xyxy, confidence, class).
 - Engine: TensorRT 10.3, built locally on this Jetson with FP16 enabled. Rebuild for another target device/runtime.

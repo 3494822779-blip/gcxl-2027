@@ -1,0 +1,5 @@
+/home/nvidia/project/gcxl-2027/build/block_interfaces/rosidl_adapter/block_interfaces:msg/Box.idl
+/home/nvidia/project/gcxl-2027/build/block_interfaces/rosidl_adapter/block_interfaces:msg/Frame.idl
+/home/nvidia/project/gcxl-2027/build/block_interfaces/rosidl_adapter/block_interfaces:msg/Target.idl
+/home/nvidia/project/gcxl-2027/build/block_interfaces/rosidl_adapter/block_interfaces:msg/AlignmentCommand.idl
+/home/nvidia/project/gcxl-2027/build/block_interfaces/rosidl_adapter/block_interfaces:msg/GripperAngles.idl

@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "block_interfaces__rs",
+		"source" : "/home/nvidia/project/gcxl-2027/build/block_interfaces/block_interfaces__rs"
+	}
+}

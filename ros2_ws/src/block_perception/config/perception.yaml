@@ -1,6 +1,6 @@
 detector:
   ros__parameters:
-    confidence_threshold: 0.25
+    confidence_threshold: 0.8
 filter:
   ros__parameters:
     process_noise: 100.0

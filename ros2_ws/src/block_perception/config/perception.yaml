@@ -59,27 +59,33 @@ filter:                            # 卡尔曼滤波，状态 [x, y, vx, vy]，�
 
 alignment:                         # 对准指令，20 Hz 发布 /alignment/command
   ros__parameters:
+    camera_servo: false            # 相机俯仰舵机开关（须与 actuator 一致）。false=相机固定：只靠底盘前进把框下边缘
+                                   # 带进画面下部区间；true=舵机俯仰对准，前进到相机低到 grasp_pitch 为止
     deadzone_x: 0.04               # 归一化死区 [0, 1)；error_x=(框中心x-W/2)/(W/2)，正值=目标在右侧
     deadzone_y: 0.2                # error_y=(框下边缘y-bottom_target*H)/(H/2)，正值=下边缘偏下；
                                    # 0.2 即下边缘在目标线上下各 10% 画面高度内算到位
     bottom_target: 0.9             # 下边缘目标位置（占画面高度比例），0.9±0.1 = 画面下部 20% 区间
-    forward_speed: 0.15            # m/s；相机尚未低到 pitch_max 时底盘前进速度
+    forward_speed: 0.5             # m/s（×wheel_speed_scale=1000 → 下位机收到 500）；舵机关：下边缘在目标带上方（物块还远）时前进，带下方只停车不倒车；
+                                   # 舵机开：相机尚未低到 grasp_pitch 时前进
     forward_max_error_x: 0.3       # 水平偏差超过此值（归一化）时不前进，先转向
-    yaw_gain: -0.5                 # rad/s 每单位归一化误差；负值仅为初始示例，须按底盘/云台实际正方向标定
-    pitch_gain: -0.5
-    max_yaw_rate: 0.3              # rad/s 限幅
-    max_pitch_rate: 0.2
-    pitch_min: -0.8                # rad；标定后的可抓取 pitch 带，不是通用测距公式，
-    pitch_max: -0.5                #      相机高度/物块高度/安装角变化后需重新标定
-    pitch_timeout: 0.25            # 秒；pitch 反馈过期判定
+    yaw_gain: -2.0                 # rad/s 每单位归一化误差；负值仅为初始示例，须按底盘/云台实际正方向标定。
+                                   # 原地转向每侧轮速 = yaw × track_width/2 × wheel_speed_scale，-2.0/2.0 时误差满幅 → ±200
+    pitch_gain: -0.5               # 仅 camera_servo=true 时有效
+    max_yaw_rate: 2.0              # rad/s 限幅；原地转向时左右轮各 ±200（track_width=0.2、scale=1000）
+    max_pitch_rate: 0.2            # 仅 camera_servo=true 时有效
+    grasp_pitch: -0.26             # rad（约 -15°）；仅 camera_servo=true 时有效：前进中相机持续低头，到达此角度并稳定后
+                                   # 触发夹爪闭合。须与 actuator 的 grasp_pitch_deg 同一角度（单位不同），
+                                   # 且须在相机可达范围 [cam_min_deg, cam_max_deg] 内；按实际抓取姿态标定
+    pitch_timeout: 0.25            # 秒；pitch 反馈过期判定（仅 camera_servo=true）
     input_timeout: 0.25            # 秒；目标消息过期判定，同时写入 valid_for_sec 供消费者检查
-    hold_seconds: 0.3              # 秒；双轴死区内 + 真实观测 + pitch 就绪持续此时长后发出一次抓取请求
-    pitch_joint: camera_pitch      # 订阅 /camera/joint_states 中的关节名
+    hold_seconds: 0.3              # 秒；水平和下边缘都在死区内 + 真实观测（舵机开时还要相机低头到 grasp_pitch）
+                                   # 持续此时长后发出一次抓取请求
+    pitch_joint: camera_pitch      # 订阅 /camera/joint_states 中的关节名（仅 camera_servo=true）
 
 gripper:                           # 框左右边缘 -> 夹爪张开角（发布 /gripper/angles，由 actuator 下发串口）
   ros__parameters:
     input_timeout: 0.25            # 秒；目标/图像过期判定
-    claw_init_deg: 20.0            # 夹爪初始角；只能从此角向外张开，不会低于它（须与 actuator 一致）
+    claw_init_deg: 0.0             # 夹爪初始角（合拢位置）；只能从此角向外张开，不会低于它（须与 actuator 一致）
     claw_max_deg: 90.0             # 夹爪最大张开角（须与 actuator 一致）
     claw_margin_mm: 5.0            # 在物体宽度 d 上再加的余量 (mm)
     mm_per_px: 0.5                 # d = mm_per_px × 框宽(px) + claw_margin_mm；需按实物标定
@@ -91,17 +97,24 @@ gripper:                           # 框左右边缘 -> 夹爪张开角（发布
 
 actuator:                          # 控制量 -> 串口指令（serial_tx），20 Hz
   ros__parameters:
+    camera_servo: false            # 相机俯仰舵机开关（须与 alignment 一致）。false 时 CMD 的相机角度固定发
+                                   # camera_fixed_deg，不处理 $FB，抓取时夹爪立刻合拢
+    camera_fixed_deg: 0.0          # camera_servo=false 时发给下位机的固定相机角度（度）
     track_width: 0.2               # m；两轮间距，用于差速换算
-    wheel_speed_scale: 1.0         # 发给下位机的轮速 = m/s × 此系数
-    max_wheel_speed: 1.0           # m/s 限幅
-    cam_min_deg: -15.0             # 相机舵机角度指令下限（度，负=低头）；发给下位机的 cp 为绝对角度
+    wheel_speed_scale: 1000.0      # 发给下位机的轮速原始值 = m/s × 此系数（0.5 m/s → 500）
+    max_wheel_speed: 0.5           # m/s 限幅，×scale 即下位机收到的轮速上限 ±500
+    cam_min_deg: -15.0             # 相机舵机角度指令下限（度，负=低头）；按机械极限，舵机最低只能到 -15°
     cam_max_deg: 30.0              # 上限（度，正=抬头）；alignment 的俯仰速度在此范围内积分成角度
-    claw_init_deg: 20.0            # 夹爪初始角（须与 gripper 一致）
+    grasp_pitch_deg: -15.0         # 抓取时相机先低头到的目标角（度，0=回正，负=低头），到位后夹爪才合拢；
+                                   # 须与 alignment 的 grasp_pitch 同一角度（-15° = -0.26 rad），
+                                   # 且须在 [cam_min_deg, cam_max_deg] 内；按实际抓取姿态标定
+    grasp_pitch_tol: 0.03          # rad；相机到达 grasp_pitch_deg 的到位容差（约 1.7°）
+    claw_init_deg: 0.0             # 夹爪初始角（合拢位置，须与 gripper 一致）
     claw_max_deg: 90.0
-    claw_close_deg: 20.0           # 抓取时合拢到的角度，须在 [claw_init_deg, claw_max_deg]
+    claw_close_deg: 0.0            # 抓取时合拢到的角度（回到初始角），须在 [claw_init_deg, claw_max_deg]
     pitch_home: 0.0                # rad；抓取时相机回正的初始角
     pitch_home_tol: 0.03           # rad；回正到位容差
-    claw_settle_sec: 0.5           # 相机到位后等待夹爪合拢的时间
+    claw_settle_sec: 0.5           # 夹爪到位后等待合拢的时间
     pitch_timeout: 0.25            # 秒；pitch 反馈过期判定
     pitch_joint: camera_pitch
 

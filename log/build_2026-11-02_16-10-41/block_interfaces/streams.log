@@ -1,0 +1,246 @@
+[0.021s] Invoking command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --build /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces -- -j8 -l8
+[0.105s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_generator_c
+[0.119s] [  3%] Built target block_interfaces__cpp
+[0.119s] [  3%] Built target block_interfaces__rs
+[0.129s] [ 14%] Built target block_interfaces__rosidl_generator_c
+[0.141s] [ 14%] Built target ament_cmake_python_copy_block_interfaces
+[0.152s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_cpp
+[0.152s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_introspection_cpp
+[0.156s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_fastrtps_cpp
+[0.157s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_introspection_c
+[0.161s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_c
+[0.162s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_fastrtps_c
+[0.185s] [ 26%] Built target block_interfaces__rosidl_typesupport_c
+[0.186s] [ 35%] Built target block_interfaces__rosidl_typesupport_introspection_c
+[0.190s] [ 46%] Built target block_interfaces__rosidl_typesupport_introspection_cpp
+[0.193s] [ 57%] Built target block_interfaces__rosidl_typesupport_fastrtps_cpp
+[0.195s] [ 68%] Built target block_interfaces__rosidl_typesupport_cpp
+[0.198s] [ 79%] Built target block_interfaces__rosidl_typesupport_fastrtps_c
+[0.236s] [ 79%] Built target block_interfaces
+[0.277s] [ 81%] Built target block_interfaces__py
+[0.309s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_generator_py
+[0.336s] [ 90%] Built target block_interfaces__rosidl_generator_py
+[0.361s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_fastrtps_c__pyext
+[0.362s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_introspection_c__pyext
+[0.362s] Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_c__pyext
+[0.384s] [ 96%] Built target block_interfaces__rosidl_typesupport_c__pyext
+[0.385s] [ 98%] Built target block_interfaces__rosidl_typesupport_fastrtps_c__pyext
+[0.385s] [100%] Built target block_interfaces__rosidl_typesupport_introspection_c__pyext
+[0.583s] running egg_info
+[0.616s] writing block_interfaces.egg-info/PKG-INFO
+[0.616s] writing dependency_links to block_interfaces.egg-info/dependency_links.txt
+[0.617s] writing top-level names to block_interfaces.egg-info/top_level.txt
+[0.717s] reading manifest file 'block_interfaces.egg-info/SOURCES.txt'
+[0.719s] writing manifest file 'block_interfaces.egg-info/SOURCES.txt'
+[0.794s] [100%] Built target ament_cmake_python_build_block_interfaces_egg
+[0.819s] Invoked command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --build /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces -- -j8 -l8
+[0.840s] Invoking command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --install /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces
+[0.859s] -- Install configuration: ""
+[0.859s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/rosidl_interfaces/block_interfaces
+[0.859s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces
+[0.860s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg
+[0.860s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/target.h
+[0.860s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/frame.h
+[0.860s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/gripper_angles.h
+[0.860s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/box.h
+[0.860s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/alignment_command.h
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__struct.h
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.h
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__functions.c
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__struct.h
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__struct.h
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__functions.h
+[0.861s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__functions.c
+[0.862s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__functions.c
+[0.862s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.h
+[0.862s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.h
+[0.862s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__functions.c
+[0.862s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__functions.h
+[0.862s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__struct.h
+[0.862s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__functions.h
+[0.863s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.h
+[0.864s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.h
+[0.864s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__functions.h
+[0.864s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__struct.h
+[0.864s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__functions.h
+[0.864s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__functions.c
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_generator_c__visibility_control.h
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/library_path.sh
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/library_path.dsv
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_generator_c.so
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_fastrtps_c.h
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_fastrtps_c.h
+[0.865s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_fastrtps_c.h
+[0.866s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_fastrtps_c.h
+[0.866s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_fastrtps_c.h
+[0.866s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[0.866s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_fastrtps_c.so
+[0.867s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces
+[0.867s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg
+[0.867s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[0.867s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail
+[0.867s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_introspection_c.h
+[0.867s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.c
+[0.867s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.c
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_introspection_c.h
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.c
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_introspection_c.h
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_introspection_c.h
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.c
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_introspection_c.h
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.c
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_introspection_c.so
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_c.so
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces
+[0.868s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg
+[0.869s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/gripper_angles.hpp
+[0.869s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp
+[0.869s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/frame.hpp
+[0.869s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/alignment_command.hpp
+[0.870s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail
+[0.870s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__traits.hpp
+[0.870s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__builder.hpp
+[0.870s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.hpp
+[0.870s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.hpp
+[0.871s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.hpp
+[0.871s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__struct.hpp
+[0.871s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__traits.hpp
+[0.871s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__struct.hpp
+[0.871s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__builder.hpp
+[0.871s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__traits.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__struct.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__traits.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__traits.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__builder.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__struct.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__builder.hpp
+[0.872s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__struct.hpp
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__builder.hpp
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/target.hpp
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/box.hpp
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_fastrtps_cpp.hpp
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_fastrtps_cpp.hpp
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/dds_fastrtps
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_fastrtps_cpp.hpp
+[0.873s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_fastrtps_cpp.hpp
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_fastrtps_cpp.hpp
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_fastrtps_cpp.so
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.cpp
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.cpp
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_introspection_cpp.hpp
+[0.874s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.cpp
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.cpp
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_introspection_cpp.hpp
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_introspection_cpp.hpp
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_introspection_cpp.hpp
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_introspection_cpp.hpp
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.cpp
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_introspection_cpp.so
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_cpp.so
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/pythonpath.sh
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/pythonpath.dsv
+[0.875s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info
+[0.876s] -- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/top_level.txt
+[0.876s] -- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/SOURCES.txt
+[0.876s] -- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/dependency_links.txt
+[0.876s] -- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/PKG-INFO
+[0.876s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces
+[0.876s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+[0.876s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/__init__.py
+[0.876s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg
+[0.876s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_gripper_angles.py
+[0.876s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_alignment_command_s.c
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/__init__.py
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_frame_s.c
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_alignment_command.py
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_frame.py
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_box_s.c
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_box.py
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_gripper_angles_s.c
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_target.py
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_target_s.c
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+[0.877s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_introspection_c.c
+[0.878s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_c.c
+[0.878s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_fastrtps_c.c
+[0.878s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+[0.878s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/libblock_interfaces__rosidl_generator_py.so
+[0.932s] Listing '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces'...
+[0.932s] Listing '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg'...
+[0.942s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+[0.942s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+[0.942s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+[0.943s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_generator_py.so
+[0.943s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/rust_packages/block_interfaces
+[0.944s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust
+[0.944s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/Cargo.toml
+[0.945s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/build.rs
+[0.945s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src
+[0.945s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/lib.rs
+[0.945s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/msg.rs
+[0.946s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/msg
+[0.946s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/msg/rmw.rs
+[0.946s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Box.idl
+[0.946s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Frame.idl
+[0.947s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Target.idl
+[0.947s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/AlignmentCommand.idl
+[0.947s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/GripperAngles.idl
+[0.947s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Box.msg
+[0.948s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Frame.msg
+[0.948s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Target.msg
+[0.949s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/AlignmentCommand.msg
+[0.949s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/GripperAngles.msg
+[0.949s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/package_run_dependencies/block_interfaces
+[0.949s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/parent_prefix_path/block_interfaces
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/ament_prefix_path.sh
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/ament_prefix_path.dsv
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/path.sh
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/path.dsv
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.bash
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.sh
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.zsh
+[0.950s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.dsv
+[0.951s] -- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.dsv
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/packages/block_interfaces
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_cExport.cmake
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_cExport-noconfig.cmake
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cExport.cmake
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cExport.cmake
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cExport-noconfig.cmake
+[0.951s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cExport.cmake
+[0.952s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cExport-noconfig.cmake
+[0.952s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_cppExport.cmake
+[0.952s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cppExport.cmake
+[0.952s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+[0.952s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cppExport.cmake
+[0.952s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+[0.952s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cppExport.cmake
+[0.953s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cppExport-noconfig.cmake
+[0.954s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_pyExport.cmake
+[0.954s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_pyExport-noconfig.cmake
+[0.955s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake-extras.cmake
+[0.955s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_dependencies-extras.cmake
+[0.956s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_include_directories-extras.cmake
+[0.956s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_libraries-extras.cmake
+[0.957s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_targets-extras.cmake
+[0.958s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[0.958s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[0.958s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake_aggregate_target-extras.cmake
+[0.959s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfacesConfig.cmake
+[0.960s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfacesConfig-version.cmake
+[0.961s] -- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.xml
+[0.962s] Invoked command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --install /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces

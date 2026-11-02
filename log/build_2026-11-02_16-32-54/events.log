@@ -1,0 +1,533 @@
+[0.000000] (-) TimerEvent: {}
+[0.000788] (-) JobUnselected: {'identifier': 'block_deepstream'}
+[0.000986] (-) JobUnselected: {'identifier': 'serial_minimal'}
+[0.001215] (block_interfaces) JobQueued: {'identifier': 'block_interfaces', 'dependencies': OrderedDict()}
+[0.001321] (block_perception) JobQueued: {'identifier': 'block_perception', 'dependencies': OrderedDict([('block_interfaces', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces')])}
+[0.001520] (block_interfaces) JobStarted: {'identifier': 'block_interfaces'}
+[0.015033] (block_interfaces) JobProgress: {'identifier': 'block_interfaces', 'progress': 'cmake'}
+[0.016333] (block_interfaces) JobProgress: {'identifier': 'block_interfaces', 'progress': 'build'}
+[0.017515] (block_interfaces) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces', '--', '-j8', '-l8'], 'cwd': '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces', 'env': OrderedDict([('GJS_DEBUG_TOPICS', 'JS ERROR;JS LOG'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/nvidia'), ('ANTHROPIC_MODEL', 'claude-sonnet-5-5'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('AI_AGENT', 'claude-code_2-1-314_agent'), ('LANGUAGE', 'zh_CN:en_US:en'), ('USER', 'nvidia'), ('CLAUDE_CODE_ENTRYPOINT', 'claude-vscode'), ('LC_TIME', 'zh_CN.UTF-8'), ('VSCODE_NLS_CONFIG', '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/tcf.json","messagesFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c/nls.messages.json","corruptMarkerFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"75539731208fa508a5b042c8fe051beb.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/tcf.json","_cacheRoot":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn","_resolvedLanguagePackCoreLocation":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c","_corruptedFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/corrupted.info"}'), ('GIT_EDITOR', 'true'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('CLAUDE_AGENT_SDK_VERSION', '0.3.314'), ('CLAUDE_CODE_SESSION_ATTENDED', '1'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib:/usr/local/cuda/lib64:'), ('CLAUDE_CODE_MESSAGING_TOKEN', '256116c39eaf928c619687de9f5a13e6'), ('INPUT_METHOD', 'ibus'), ('HOME', '/home/nvidia'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1000/vscode-a9aba010-1.13-main.sock'), ('JETSON_L4T', '36.5.0'), ('ANTHROPIC_DEFAULT_SONNET_MODEL', 'claude-sonnet-5-5'), ('GIO_LAUNCHED_DESKTOP_FILE', '/usr/share/applications/code.desktop'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('JETSON_MODEL', 'NVIDIA Jetson Orin NX Engineering Reference Developer Kit Super'), ('CLAUDE_CODE_CHILD_SESSION', '1'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('COPILOT_OTEL_FILE_EXPORTER_PATH', '/dev/null'), ('MANAGERPID', '1385'), ('SYSTEMD_EXEC_PID', '1914'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '5697'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('VSCODE_L10N_BUNDLE_LOCATION', 'file:///home/nvidia/.vscode/extensions/ms-ceintl.vscode-language-pack-zh-hans-1.131.2026090407/translations/extensions/vscode.markdown-language-features.i18n.json'), ('COLCON_PREFIX_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'nvidia'), ('JETSON_MODULE', 'NVIDIA Jetson Orin NX (16GB ram)'), ('JETSON_SERIAL_NUMBER', '1420825015640'), ('CLAUDE_CODE_EMIT_STARTUP_TIMING', '1'), ('JOURNAL_STREAM', '8:46569'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_QUESTION_PREVIEW_FORMAT', 'markdown'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'nvidia'), ('ANTHROPIC_BASE_URL', 'https://api.site'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('ANTHROPIC_DEFAULT_OPUS_MODEL', 'claude-sonnet-5-5'), ('MCP_CONNECTION_NONBLOCKING', 'true'), ('PATH', '/home/nvidia/.local/bin:/usr/local/node20/bin:/usr/local/cuda/bin:/home/nvidia/.local/bin:/opt/ros/humble/bin:/usr/local/node20/bin:/usr/local/cuda/bin:/home/nvidia/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin'), ('SESSION_MANAGER', 'local/nvidia-desktop:@/tmp/.ICE-unix/1887,unix/nvidia-desktop:/tmp/.ICE-unix/1887'), ('INVOCATION_ID', '2de90e8edbaf4c07965cb420b3ab0bfd'), ('PAPERSIZE', 'a4'), ('COREPACK_ENABLE_AUTO_PIN', '0'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('GDK_BACKEND', 'x11'), ('CLAUDE_EFFORT', 'medium'), ('DISPLAY', ':0'), ('CLAUDE_PID', '7615'), ('NoDefaultCurrentDirectoryInExePath', '1'), ('LANG', 'zh_CN.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'claude-sonnet-5-5'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1000/gdm/Xauthority'), ('JETSON_SOC', 'tegra234'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1000/keyring/ssh'), ('AMENT_PREFIX_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('CLAUDE_CODE_STARTUP_FAILURE_RESULTS', '1'), ('ANTHROPIC_AUTH_TOKEN', 'sk-94956480bb764ba88bd25474e10c1b61'), ('MXC_BIN_DIR', '/usr/share/code/resources/app/node_modules.asar.unpacked/@microsoft/mxc-sdk/bin'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING', 'true'), ('CLAUDE_CODE_SESSION_ID', 'bdda8898-0af4-48b0-9684-18b833a2e95b'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CLAUDECODE', '1'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1000/gnupg/S.gpg-agent:0:1'), ('GJS_DEBUG_OUTPUT', 'stderr'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('QT_IM_MODULE', 'ibus'), ('JETSON_CUDA_ARCH_BIN', '8.7'), ('PWD', '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/nvidia/.config/Code/CachedData/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('CLAUDE_CODE_EXECPATH', '/home/nvidia/.vscode/extensions/anthropic.claude-code-2.1.314-linux-arm64/resources/native-binary/claude'), ('PYTHONPATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal/lib/python3.10/site-packages:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('CLAUDE_CODE_ENABLE_TASKS', '0'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('COPILOT_CLI_ENABLED_FEATURE_FLAGS', 'SHELL_SPAWN_BACKEND'), ('JETSON_JETPACK', '6.2.2'), ('CLAUDE_CODE_MESSAGING_SOCKET', '/run/user/1000/cc-socks/7615.sock'), ('CMAKE_PREFIX_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble'), ('VSCODE_PID', '5697'), ('JETSON_P_NUMBER', 'p3767-0000')]), 'shell': False}
+[0.070489] (block_interfaces) StdoutLine: {'line': b'-- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[0.099347] (-) TimerEvent: {}
+[0.199695] (-) TimerEvent: {}
+[0.300087] (-) TimerEvent: {}
+[0.324373] (block_interfaces) StdoutLine: {'line': b'-- Found rosidl_default_generators: 1.2.1 (/opt/ros/humble/share/rosidl_default_generators/cmake)\n'}
+[0.327348] (block_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[0.333012] (block_interfaces) StdoutLine: {'line': b'-- Found rosidl_adapter: 3.1.9 (/opt/ros/humble/share/rosidl_adapter/cmake)\n'}
+[0.388836] (block_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[0.400157] (-) TimerEvent: {}
+[0.428278] (block_interfaces) StdoutLine: {'line': b'-- Found std_msgs: 4.9.1 (/opt/ros/humble/share/std_msgs/cmake)\n'}
+[0.460507] (block_interfaces) StdoutLine: {'line': b'-- Found sensor_msgs: 4.9.1 (/opt/ros/humble/share/sensor_msgs/cmake)\n'}
+[0.500306] (-) TimerEvent: {}
+[0.600620] (-) TimerEvent: {}
+[0.700984] (-) TimerEvent: {}
+[0.801566] (-) TimerEvent: {}
+[0.901990] (-) TimerEvent: {}
+[1.002375] (-) TimerEvent: {}
+[1.102749] (-) TimerEvent: {}
+[1.168190] (block_interfaces) StdoutLine: {'line': b'-- Found ament_cmake_ros: 0.10.0 (/opt/ros/humble/share/ament_cmake_ros/cmake)\n'}
+[1.202935] (-) TimerEvent: {}
+[1.303316] (-) TimerEvent: {}
+[1.403757] (-) TimerEvent: {}
+[1.504176] (-) TimerEvent: {}
+[1.604664] (-) TimerEvent: {}
+[1.705013] (-) TimerEvent: {}
+[1.711036] (block_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[1.805173] (-) TimerEvent: {}
+[1.905596] (-) TimerEvent: {}
+[2.006011] (-) TimerEvent: {}
+[2.106431] (-) TimerEvent: {}
+[2.206843] (-) TimerEvent: {}
+[2.307313] (-) TimerEvent: {}
+[2.407792] (-) TimerEvent: {}
+[2.448989] (block_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[2.497629] (block_interfaces) StdoutLine: {'line': b'-- Found python_cmake_module: 0.10.0 (/opt/ros/humble/share/python_cmake_module/cmake)\n'}
+[2.507936] (-) TimerEvent: {}
+[2.552756] (block_interfaces) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[2.553433] (block_interfaces) StdoutLine: {'line': b'-- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.10\n'}
+[2.553748] (block_interfaces) StdoutLine: {'line': b'-- Using PYTHON_LIBRARIES: /usr/lib/aarch64-linux-gnu/libpython3.10.so\n'}
+[2.608136] (-) TimerEvent: {}
+[2.708626] (-) TimerEvent: {}
+[2.809045] (-) TimerEvent: {}
+[2.832146] (block_interfaces) StdoutLine: {'line': b'-- Configuring done\n'}
+[2.909222] (-) TimerEvent: {}
+[2.921327] (block_interfaces) StdoutLine: {'line': b'-- Generating done\n'}
+[2.944756] (block_interfaces) StdoutLine: {'line': b'-- Build files have been written to: /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces\n'}
+[3.003995] (block_interfaces) StdoutLine: {'line': b'[  1%] Generating C code for ROS interfaces\n'}
+[3.009394] (-) TimerEvent: {}
+[3.023068] (block_interfaces) StdoutLine: {'line': b'[  4%] Generating Rust code for ROS interfaces\n'}
+[3.023485] (block_interfaces) StdoutLine: {'line': b'[  4%] Generating C++ code for ROS interfaces\n'}
+[3.043725] (block_interfaces) StdoutLine: {'line': b'[  4%] Built target ament_cmake_python_copy_block_interfaces\n'}
+[3.109553] (-) TimerEvent: {}
+[3.209931] (-) TimerEvent: {}
+[3.310245] (-) TimerEvent: {}
+[3.410593] (-) TimerEvent: {}
+[3.472467] (block_interfaces) StdoutLine: {'line': b'running egg_info\n'}
+[3.505664] (block_interfaces) StdoutLine: {'line': b'writing block_interfaces.egg-info/PKG-INFO\n'}
+[3.506764] (block_interfaces) StdoutLine: {'line': b'writing dependency_links to block_interfaces.egg-info/dependency_links.txt\n'}
+[3.507389] (block_interfaces) StdoutLine: {'line': b'writing top-level names to block_interfaces.egg-info/top_level.txt\n'}
+[3.510680] (-) TimerEvent: {}
+[3.610974] (-) TimerEvent: {}
+[3.611488] (block_interfaces) StdoutLine: {'line': b"reading manifest file 'block_interfaces.egg-info/SOURCES.txt'\n"}
+[3.613581] (block_interfaces) StdoutLine: {'line': b"writing manifest file 'block_interfaces.egg-info/SOURCES.txt'\n"}
+[3.706778] (block_interfaces) StdoutLine: {'line': b'[  4%] Built target ament_cmake_python_build_block_interfaces_egg\n'}
+[3.711102] (-) TimerEvent: {}
+[3.811414] (-) TimerEvent: {}
+[3.907344] (block_interfaces) StdoutLine: {'line': b'[  4%] Built target block_interfaces__rs\n'}
+[3.911496] (-) TimerEvent: {}
+[4.011807] (-) TimerEvent: {}
+[4.112221] (-) TimerEvent: {}
+[4.121762] (block_interfaces) StdoutLine: {'line': b'[  4%] Built target block_interfaces__cpp\n'}
+[4.126730] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_generator_c\n'}
+[4.141130] (block_interfaces) StdoutLine: {'line': b'[  9%] Generating C++ type support for eProsima Fast-RTPS\n'}
+[4.141569] (block_interfaces) StdoutLine: {'line': b'[  9%] Generating C++ introspection for ROS interfaces\n'}
+[4.141707] (block_interfaces) StdoutLine: {'line': b'[  9%] Generating C++ type support dispatch for ROS interfaces\n'}
+[4.147519] (block_interfaces) StdoutLine: {'line': b'[ 15%] Building C object CMakeFiles/block_interfaces__rosidl_generator_c.dir/rosidl_generator_c/block_interfaces/msg/detail/box__functions.c.o\n'}
+[4.147948] (block_interfaces) StdoutLine: {'line': b'[ 15%] Building C object CMakeFiles/block_interfaces__rosidl_generator_c.dir/rosidl_generator_c/block_interfaces/msg/detail/frame__functions.c.o\n'}
+[4.148089] (block_interfaces) StdoutLine: {'line': b'[ 15%] Building C object CMakeFiles/block_interfaces__rosidl_generator_c.dir/rosidl_generator_c/block_interfaces/msg/detail/alignment_command__functions.c.o\n'}
+[4.148207] (block_interfaces) StdoutLine: {'line': b'[ 15%] Building C object CMakeFiles/block_interfaces__rosidl_generator_c.dir/rosidl_generator_c/block_interfaces/msg/detail/target__functions.c.o\n'}
+[4.158340] (block_interfaces) StdoutLine: {'line': b'[ 17%] Building C object CMakeFiles/block_interfaces__rosidl_generator_c.dir/rosidl_generator_c/block_interfaces/msg/detail/gripper_angles__functions.c.o\n'}
+[4.212378] (-) TimerEvent: {}
+[4.277890] (block_interfaces) StdoutLine: {'line': b'[ 18%] Linking C shared library libblock_interfaces__rosidl_generator_c.so\n'}
+[4.312534] (-) TimerEvent: {}
+[4.345292] (block_interfaces) StdoutLine: {'line': b'[ 18%] Built target block_interfaces__rosidl_generator_c\n'}
+[4.365020] (block_interfaces) StdoutLine: {'line': b'[ 23%] Generating C type support dispatch for ROS interfaces\n'}
+[4.365410] (block_interfaces) StdoutLine: {'line': b'[ 23%] Generating C type support for eProsima Fast-RTPS\n'}
+[4.365539] (block_interfaces) StdoutLine: {'line': b'[ 23%] Generating C introspection for ROS interfaces\n'}
+[4.412698] (-) TimerEvent: {}
+[4.513061] (-) TimerEvent: {}
+[4.613411] (-) TimerEvent: {}
+[4.713768] (-) TimerEvent: {}
+[4.814131] (-) TimerEvent: {}
+[4.914496] (-) TimerEvent: {}
+[4.961217] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_cpp\n'}
+[4.990898] (block_interfaces) StdoutLine: {'line': b'[ 25%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/block_interfaces/msg/frame__type_support.cpp.o\n'}
+[4.997196] (block_interfaces) StdoutLine: {'line': b'[ 26%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/block_interfaces/msg/box__type_support.cpp.o\n'}
+[5.002156] (block_interfaces) StdoutLine: {'line': b'[ 28%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/block_interfaces/msg/target__type_support.cpp.o\n'}
+[5.014659] (-) TimerEvent: {}
+[5.115077] (-) TimerEvent: {}
+[5.215500] (-) TimerEvent: {}
+[5.283745] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_introspection_cpp\n'}
+[5.309159] (block_interfaces) StdoutLine: {'line': b'[ 29%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/block_interfaces/msg/detail/box__type_support.cpp.o\n'}
+[5.315685] (-) TimerEvent: {}
+[5.372971] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_c\n'}
+[5.393675] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_fastrtps_cpp\n'}
+[5.404899] (block_interfaces) StdoutLine: {'line': b'[ 31%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_c.dir/rosidl_typesupport_c/block_interfaces/msg/box__type_support.cpp.o\n'}
+[5.415865] (-) TimerEvent: {}
+[5.417719] (block_interfaces) StdoutLine: {'line': b'[ 32%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/block_interfaces/msg/detail/dds_fastrtps/box__type_support.cpp.o\n'}
+[5.480530] (block_interfaces) StdoutLine: {'line': b'[ 34%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_c.dir/rosidl_typesupport_c/block_interfaces/msg/frame__type_support.cpp.o\n'}
+[5.496605] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_fastrtps_c\n'}
+[5.516124] (-) TimerEvent: {}
+[5.526100] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_introspection_c\n'}
+[5.528425] (block_interfaces) StdoutLine: {'line': b'[ 35%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/block_interfaces/msg/detail/box__type_support_c.cpp.o\n'}
+[5.537152] (block_interfaces) StdoutLine: {'line': b'[ 37%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/block_interfaces/msg/detail/frame__type_support_c.cpp.o\n'}
+[5.542289] (block_interfaces) StdoutLine: {'line': b'[ 39%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_c.dir/rosidl_typesupport_c/block_interfaces/msg/target__type_support.cpp.o\n'}
+[5.562133] (block_interfaces) StdoutLine: {'line': b'[ 40%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/block_interfaces/msg/detail/box__type_support.c.o\n'}
+[5.616253] (-) TimerEvent: {}
+[5.637880] (block_interfaces) StdoutLine: {'line': b'[ 42%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/block_interfaces/msg/detail/frame__type_support.c.o\n'}
+[5.645503] (block_interfaces) StdoutLine: {'line': b'[ 43%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_c.dir/rosidl_typesupport_c/block_interfaces/msg/alignment_command__type_support.cpp.o\n'}
+[5.656294] (block_interfaces) StdoutLine: {'line': b'[ 45%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/block_interfaces/msg/detail/target__type_support.c.o\n'}
+[5.670548] (block_interfaces) StdoutLine: {'line': b'[ 46%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/block_interfaces/msg/alignment_command__type_support.cpp.o\n'}
+[5.714602] (block_interfaces) StdoutLine: {'line': b'[ 48%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_c.dir/rosidl_typesupport_c/block_interfaces/msg/gripper_angles__type_support.cpp.o\n'}
+[5.716367] (-) TimerEvent: {}
+[5.746902] (block_interfaces) StdoutLine: {'line': b'[ 50%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/block_interfaces/msg/detail/alignment_command__type_support.c.o\n'}
+[5.763139] (block_interfaces) StdoutLine: {'line': b'[ 51%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/block_interfaces/msg/detail/gripper_angles__type_support.c.o\n'}
+[5.800530] (block_interfaces) StdoutLine: {'line': b'[ 53%] Linking CXX shared library libblock_interfaces__rosidl_typesupport_c.so\n'}
+[5.816587] (-) TimerEvent: {}
+[5.865884] (block_interfaces) StdoutLine: {'line': b'[ 54%] Linking C shared library libblock_interfaces__rosidl_typesupport_introspection_c.so\n'}
+[5.876918] (block_interfaces) StdoutLine: {'line': b'[ 56%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/block_interfaces/msg/gripper_angles__type_support.cpp.o\n'}
+[5.916767] (-) TimerEvent: {}
+[5.963908] (block_interfaces) StdoutLine: {'line': b'[ 56%] Built target block_interfaces__rosidl_typesupport_c\n'}
+[6.012683] (block_interfaces) StdoutLine: {'line': b'[ 57%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/block_interfaces/msg/detail/target__type_support_c.cpp.o\n'}
+[6.016962] (-) TimerEvent: {}
+[6.026775] (block_interfaces) StdoutLine: {'line': b'[ 57%] Built target block_interfaces__rosidl_typesupport_introspection_c\n'}
+[6.055632] (block_interfaces) StdoutLine: {'line': b'[ 59%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/block_interfaces/msg/detail/alignment_command__type_support_c.cpp.o\n'}
+[6.117152] (-) TimerEvent: {}
+[6.134601] (block_interfaces) StdoutLine: {'line': b'[ 60%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/block_interfaces/msg/detail/frame__type_support.cpp.o\n'}
+[6.200467] (block_interfaces) StdoutLine: {'line': b'[ 62%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/block_interfaces/msg/detail/target__type_support.cpp.o\n'}
+[6.217335] (-) TimerEvent: {}
+[6.270903] (block_interfaces) StdoutLine: {'line': b'[ 64%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/block_interfaces/msg/detail/gripper_angles__type_support_c.cpp.o\n'}
+[6.307768] (block_interfaces) StdoutLine: {'line': b'[ 65%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/block_interfaces/msg/detail/alignment_command__type_support.cpp.o\n'}
+[6.317529] (-) TimerEvent: {}
+[6.417965] (-) TimerEvent: {}
+[6.422089] (block_interfaces) StdoutLine: {'line': b'[ 67%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/block_interfaces/msg/detail/dds_fastrtps/frame__type_support.cpp.o\n'}
+[6.518151] (-) TimerEvent: {}
+[6.618589] (-) TimerEvent: {}
+[6.647665] (block_interfaces) StdoutLine: {'line': b'[ 68%] Linking CXX shared library libblock_interfaces__rosidl_typesupport_cpp.so\n'}
+[6.718788] (-) TimerEvent: {}
+[6.798075] (block_interfaces) StdoutLine: {'line': b'[ 70%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/block_interfaces/msg/detail/dds_fastrtps/target__type_support.cpp.o\n'}
+[6.818973] (-) TimerEvent: {}
+[6.830740] (block_interfaces) StdoutLine: {'line': b'[ 71%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/block_interfaces/msg/detail/dds_fastrtps/alignment_command__type_support.cpp.o\n'}
+[6.840891] (block_interfaces) StdoutLine: {'line': b'[ 71%] Built target block_interfaces__rosidl_typesupport_cpp\n'}
+[6.869732] (block_interfaces) StdoutLine: {'line': b'[ 73%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/block_interfaces/msg/detail/dds_fastrtps/gripper_angles__type_support.cpp.o\n'}
+[6.919161] (-) TimerEvent: {}
+[7.014984] (block_interfaces) StdoutLine: {'line': b'[ 75%] Building CXX object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/block_interfaces/msg/detail/gripper_angles__type_support.cpp.o\n'}
+[7.019583] (-) TimerEvent: {}
+[7.120026] (-) TimerEvent: {}
+[7.137666] (block_interfaces) StdoutLine: {'line': b'[ 76%] Linking CXX shared library libblock_interfaces__rosidl_typesupport_fastrtps_c.so\n'}
+[7.220218] (-) TimerEvent: {}
+[7.311955] (block_interfaces) StdoutLine: {'line': b'[ 76%] Built target block_interfaces__rosidl_typesupport_fastrtps_c\n'}
+[7.320385] (-) TimerEvent: {}
+[7.420778] (-) TimerEvent: {}
+[7.521179] (-) TimerEvent: {}
+[7.621579] (-) TimerEvent: {}
+[7.722002] (-) TimerEvent: {}
+[7.745001] (block_interfaces) StdoutLine: {'line': b'[ 78%] Linking CXX shared library libblock_interfaces__rosidl_typesupport_introspection_cpp.so\n'}
+[7.799623] (block_interfaces) StdoutLine: {'line': b'[ 79%] Linking CXX shared library libblock_interfaces__rosidl_typesupport_fastrtps_cpp.so\n'}
+[7.822178] (-) TimerEvent: {}
+[7.905180] (block_interfaces) StdoutLine: {'line': b'[ 79%] Built target block_interfaces__rosidl_typesupport_introspection_cpp\n'}
+[7.922341] (-) TimerEvent: {}
+[7.955530] (block_interfaces) StdoutLine: {'line': b'[ 79%] Built target block_interfaces__rosidl_typesupport_fastrtps_cpp\n'}
+[7.997974] (block_interfaces) StdoutLine: {'line': b'[ 79%] Built target block_interfaces\n'}
+[8.022541] (-) TimerEvent: {}
+[8.044402] (block_interfaces) StdoutLine: {'line': b'[ 81%] Generating Python code for ROS interfaces\n'}
+[8.122734] (-) TimerEvent: {}
+[8.223229] (-) TimerEvent: {}
+[8.323700] (-) TimerEvent: {}
+[8.424170] (-) TimerEvent: {}
+[8.524633] (-) TimerEvent: {}
+[8.625064] (-) TimerEvent: {}
+[8.725455] (-) TimerEvent: {}
+[8.825845] (-) TimerEvent: {}
+[8.926349] (-) TimerEvent: {}
+[9.026827] (-) TimerEvent: {}
+[9.127309] (-) TimerEvent: {}
+[9.227751] (-) TimerEvent: {}
+[9.328212] (-) TimerEvent: {}
+[9.428679] (-) TimerEvent: {}
+[9.529138] (-) TimerEvent: {}
+[9.584162] (block_interfaces) StdoutLine: {'line': b'[ 81%] Built target block_interfaces__py\n'}
+[9.615400] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_generator_py\n'}
+[9.629321] (-) TimerEvent: {}
+[9.639014] (block_interfaces) StdoutLine: {'line': b'[ 87%] Building C object CMakeFiles/block_interfaces__rosidl_generator_py.dir/rosidl_generator_py/block_interfaces/msg/_alignment_command_s.c.o\n'}
+[9.639460] (block_interfaces) StdoutLine: {'line': b'[ 87%] Building C object CMakeFiles/block_interfaces__rosidl_generator_py.dir/rosidl_generator_py/block_interfaces/msg/_target_s.c.o\n'}
+[9.639898] (block_interfaces) StdoutLine: {'line': b'[ 87%] Building C object CMakeFiles/block_interfaces__rosidl_generator_py.dir/rosidl_generator_py/block_interfaces/msg/_box_s.c.o\n'}
+[9.640033] (block_interfaces) StdoutLine: {'line': b'[ 87%] Building C object CMakeFiles/block_interfaces__rosidl_generator_py.dir/rosidl_generator_py/block_interfaces/msg/_frame_s.c.o\n'}
+[9.640139] (block_interfaces) StdoutLine: {'line': b'[ 89%] Building C object CMakeFiles/block_interfaces__rosidl_generator_py.dir/rosidl_generator_py/block_interfaces/msg/_gripper_angles_s.c.o\n'}
+[9.729504] (-) TimerEvent: {}
+[9.829965] (-) TimerEvent: {}
+[9.846121] (block_interfaces) StdoutLine: {'line': b'[ 90%] Linking C shared library rosidl_generator_py/block_interfaces/libblock_interfaces__rosidl_generator_py.so\n'}
+[9.930142] (-) TimerEvent: {}
+[9.934038] (block_interfaces) StdoutLine: {'line': b'[ 90%] Built target block_interfaces__rosidl_generator_py\n'}
+[9.957593] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_fastrtps_c__pyext\n'}
+[9.957971] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_c__pyext\n'}
+[9.958345] (block_interfaces) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target block_interfaces__rosidl_typesupport_introspection_c__pyext\n'}
+[9.979451] (block_interfaces) StdoutLine: {'line': b'[ 93%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_c.c.o\n'}
+[9.979923] (block_interfaces) StdoutLine: {'line': b'[ 95%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_py/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_fastrtps_c.c.o\n'}
+[9.980102] (block_interfaces) StdoutLine: {'line': b'[ 95%] Building C object CMakeFiles/block_interfaces__rosidl_typesupport_introspection_c__pyext.dir/rosidl_generator_py/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_introspection_c.c.o\n'}
+[10.030323] (-) TimerEvent: {}
+[10.130731] (-) TimerEvent: {}
+[10.178817] (block_interfaces) StdoutLine: {'line': b'[ 98%] Linking C shared library rosidl_generator_py/block_interfaces/block_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.179299] (block_interfaces) StdoutLine: {'line': b'[ 98%] Linking C shared library rosidl_generator_py/block_interfaces/block_interfaces_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.199732] (block_interfaces) StdoutLine: {'line': b'[100%] Linking C shared library rosidl_generator_py/block_interfaces/block_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.230897] (-) TimerEvent: {}
+[10.259084] (block_interfaces) StdoutLine: {'line': b'[100%] Built target block_interfaces__rosidl_typesupport_introspection_c__pyext\n'}
+[10.259570] (block_interfaces) StdoutLine: {'line': b'[100%] Built target block_interfaces__rosidl_typesupport_c__pyext\n'}
+[10.279981] (block_interfaces) StdoutLine: {'line': b'[100%] Built target block_interfaces__rosidl_typesupport_fastrtps_c__pyext\n'}
+[10.306859] (block_interfaces) CommandEnded: {'returncode': 0}
+[10.309786] (block_interfaces) JobProgress: {'identifier': 'block_interfaces', 'progress': 'install'}
+[10.329143] (block_interfaces) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces'], 'cwd': '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces', 'env': OrderedDict([('GJS_DEBUG_TOPICS', 'JS ERROR;JS LOG'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/nvidia'), ('ANTHROPIC_MODEL', 'claude-sonnet-5-5'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('AI_AGENT', 'claude-code_2-1-314_agent'), ('LANGUAGE', 'zh_CN:en_US:en'), ('USER', 'nvidia'), ('CLAUDE_CODE_ENTRYPOINT', 'claude-vscode'), ('LC_TIME', 'zh_CN.UTF-8'), ('VSCODE_NLS_CONFIG', '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/tcf.json","messagesFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c/nls.messages.json","corruptMarkerFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"75539731208fa508a5b042c8fe051beb.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/tcf.json","_cacheRoot":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn","_resolvedLanguagePackCoreLocation":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c","_corruptedFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/corrupted.info"}'), ('GIT_EDITOR', 'true'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('CLAUDE_AGENT_SDK_VERSION', '0.3.314'), ('CLAUDE_CODE_SESSION_ATTENDED', '1'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib:/usr/local/cuda/lib64:'), ('CLAUDE_CODE_MESSAGING_TOKEN', '256116c39eaf928c619687de9f5a13e6'), ('INPUT_METHOD', 'ibus'), ('HOME', '/home/nvidia'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1000/vscode-a9aba010-1.13-main.sock'), ('JETSON_L4T', '36.5.0'), ('ANTHROPIC_DEFAULT_SONNET_MODEL', 'claude-sonnet-5-5'), ('GIO_LAUNCHED_DESKTOP_FILE', '/usr/share/applications/code.desktop'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('JETSON_MODEL', 'NVIDIA Jetson Orin NX Engineering Reference Developer Kit Super'), ('CLAUDE_CODE_CHILD_SESSION', '1'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('COPILOT_OTEL_FILE_EXPORTER_PATH', '/dev/null'), ('MANAGERPID', '1385'), ('SYSTEMD_EXEC_PID', '1914'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '5697'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('VSCODE_L10N_BUNDLE_LOCATION', 'file:///home/nvidia/.vscode/extensions/ms-ceintl.vscode-language-pack-zh-hans-1.131.2026090407/translations/extensions/vscode.markdown-language-features.i18n.json'), ('COLCON_PREFIX_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'nvidia'), ('JETSON_MODULE', 'NVIDIA Jetson Orin NX (16GB ram)'), ('JETSON_SERIAL_NUMBER', '1420825015640'), ('CLAUDE_CODE_EMIT_STARTUP_TIMING', '1'), ('JOURNAL_STREAM', '8:46569'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_QUESTION_PREVIEW_FORMAT', 'markdown'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'nvidia'), ('ANTHROPIC_BASE_URL', 'https://api.site'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('ANTHROPIC_DEFAULT_OPUS_MODEL', 'claude-sonnet-5-5'), ('MCP_CONNECTION_NONBLOCKING', 'true'), ('PATH', '/home/nvidia/.local/bin:/usr/local/node20/bin:/usr/local/cuda/bin:/home/nvidia/.local/bin:/opt/ros/humble/bin:/usr/local/node20/bin:/usr/local/cuda/bin:/home/nvidia/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin'), ('SESSION_MANAGER', 'local/nvidia-desktop:@/tmp/.ICE-unix/1887,unix/nvidia-desktop:/tmp/.ICE-unix/1887'), ('INVOCATION_ID', '2de90e8edbaf4c07965cb420b3ab0bfd'), ('PAPERSIZE', 'a4'), ('COREPACK_ENABLE_AUTO_PIN', '0'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('GDK_BACKEND', 'x11'), ('CLAUDE_EFFORT', 'medium'), ('DISPLAY', ':0'), ('CLAUDE_PID', '7615'), ('NoDefaultCurrentDirectoryInExePath', '1'), ('LANG', 'zh_CN.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'claude-sonnet-5-5'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1000/gdm/Xauthority'), ('JETSON_SOC', 'tegra234'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1000/keyring/ssh'), ('AMENT_PREFIX_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('CLAUDE_CODE_STARTUP_FAILURE_RESULTS', '1'), ('ANTHROPIC_AUTH_TOKEN', 'sk-94956480bb764ba88bd25474e10c1b61'), ('MXC_BIN_DIR', '/usr/share/code/resources/app/node_modules.asar.unpacked/@microsoft/mxc-sdk/bin'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING', 'true'), ('CLAUDE_CODE_SESSION_ID', 'bdda8898-0af4-48b0-9684-18b833a2e95b'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CLAUDECODE', '1'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1000/gnupg/S.gpg-agent:0:1'), ('GJS_DEBUG_OUTPUT', 'stderr'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('QT_IM_MODULE', 'ibus'), ('JETSON_CUDA_ARCH_BIN', '8.7'), ('PWD', '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/nvidia/.config/Code/CachedData/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('CLAUDE_CODE_EXECPATH', '/home/nvidia/.vscode/extensions/anthropic.claude-code-2.1.314-linux-arm64/resources/native-binary/claude'), ('PYTHONPATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal/lib/python3.10/site-packages:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('CLAUDE_CODE_ENABLE_TASKS', '0'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('COPILOT_CLI_ENABLED_FEATURE_FLAGS', 'SHELL_SPAWN_BACKEND'), ('JETSON_JETPACK', '6.2.2'), ('CLAUDE_CODE_MESSAGING_SOCKET', '/run/user/1000/cc-socks/7615.sock'), ('CMAKE_PREFIX_PATH', '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble'), ('VSCODE_PID', '5697'), ('JETSON_P_NUMBER', 'p3767-0000')]), 'shell': False}
+[10.332577] (-) TimerEvent: {}
+[10.349070] (block_interfaces) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[10.349923] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/rosidl_interfaces/block_interfaces\n'}
+[10.350572] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces\n'}
+[10.351014] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg\n'}
+[10.351726] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/target.h\n'}
+[10.352447] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/frame.h\n'}
+[10.352888] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/gripper_angles.h\n'}
+[10.353176] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/box.h\n'}
+[10.353568] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/alignment_command.h\n'}
+[10.353790] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail\n'}
+[10.353931] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__struct.h\n'}
+[10.354338] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.h\n'}
+[10.354701] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__functions.c\n'}
+[10.355125] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__struct.h\n'}
+[10.355725] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__struct.h\n'}
+[10.356265] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__functions.h\n'}
+[10.356723] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__functions.c\n'}
+[10.356974] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__functions.c\n'}
+[10.357386] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.h\n'}
+[10.357639] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.h\n'}
+[10.358248] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__functions.c\n'}
+[10.358593] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__functions.h\n'}
+[10.358944] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__struct.h\n'}
+[10.359354] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__functions.h\n'}
+[10.359804] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.h\n'}
+[10.360124] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.h\n'}
+[10.360404] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__functions.h\n'}
+[10.360818] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__struct.h\n'}
+[10.360990] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__functions.h\n'}
+[10.361114] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__functions.c\n'}
+[10.361301] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_generator_c__visibility_control.h\n'}
+[10.361402] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/library_path.sh\n'}
+[10.361590] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/library_path.dsv\n'}
+[10.361765] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_generator_c.so\n'}
+[10.361871] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_generator_c.so" to ""\n'}
+[10.362081] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces\n'}
+[10.362259] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg\n'}
+[10.362365] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail\n'}
+[10.362827] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_fastrtps_c.h\n'}
+[10.363215] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_fastrtps_c.h\n'}
+[10.363589] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_fastrtps_c.h\n'}
+[10.363830] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_fastrtps_c.h\n'}
+[10.364182] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_fastrtps_c.h\n'}
+[10.364528] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_typesupport_fastrtps_c__visibility_control.h\n'}
+[10.364756] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_fastrtps_c.so\n'}
+[10.365194] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_fastrtps_c.so" to ""\n'}
+[10.365535] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces\n'}
+[10.365751] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg\n'}
+[10.365995] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_typesupport_introspection_c__visibility_control.h\n'}
+[10.366206] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail\n'}
+[10.366407] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_introspection_c.h\n'}
+[10.366652] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.c\n'}
+[10.366857] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.c\n'}
+[10.367059] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_introspection_c.h\n'}
+[10.367307] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.c\n'}
+[10.367504] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_introspection_c.h\n'}
+[10.367694] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_introspection_c.h\n'}
+[10.367879] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.c\n'}
+[10.368065] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_introspection_c.h\n'}
+[10.368272] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.c\n'}
+[10.368463] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_introspection_c.so\n'}
+[10.368648] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_introspection_c.so" to ""\n'}
+[10.369367] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_c.so\n'}
+[10.369666] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_c.so" to ""\n'}
+[10.370058] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces\n'}
+[10.370638] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg\n'}
+[10.371072] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/gripper_angles.hpp\n'}
+[10.371511] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp\n'}
+[10.372945] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/frame.hpp\n'}
+[10.373252] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/alignment_command.hpp\n'}
+[10.373613] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail\n'}
+[10.373832] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__traits.hpp\n'}
+[10.373990] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__builder.hpp\n'}
+[10.374150] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.hpp\n'}
+[10.374881] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.hpp\n'}
+[10.375348] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.hpp\n'}
+[10.375810] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__struct.hpp\n'}
+[10.376284] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__traits.hpp\n'}
+[10.376682] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__struct.hpp\n'}
+[10.377002] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__builder.hpp\n'}
+[10.377402] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__traits.hpp\n'}
+[10.377643] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__struct.hpp\n'}
+[10.377968] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__traits.hpp\n'}
+[10.378312] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__traits.hpp\n'}
+[10.378574] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__builder.hpp\n'}
+[10.378986] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__struct.hpp\n'}
+[10.379433] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.hpp\n'}
+[10.379856] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.hpp\n'}
+[10.380290] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__builder.hpp\n'}
+[10.380730] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__struct.hpp\n'}
+[10.381111] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__builder.hpp\n'}
+[10.381592] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/target.hpp\n'}
+[10.381719] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/box.hpp\n'}
+[10.381961] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces\n'}
+[10.382202] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg\n'}
+[10.382324] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail\n'}
+[10.382855] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[10.383154] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[10.383671] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/dds_fastrtps\n'}
+[10.383951] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[10.384213] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[10.384624] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[10.384922] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h\n'}
+[10.385139] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_fastrtps_cpp.so\n'}
+[10.385430] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_fastrtps_cpp.so" to ""\n'}
+[10.385790] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces\n'}
+[10.385957] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg\n'}
+[10.386106] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail\n'}
+[10.386272] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__type_support.cpp\n'}
+[10.386420] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__type_support.cpp\n'}
+[10.386562] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__rosidl_typesupport_introspection_cpp.hpp\n'}
+[10.386703] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__type_support.cpp\n'}
+[10.386845] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/frame__type_support.cpp\n'}
+[10.387268] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/alignment_command__rosidl_typesupport_introspection_cpp.hpp\n'}
+[10.387447] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__rosidl_typesupport_introspection_cpp.hpp\n'}
+[10.387601] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/box__rosidl_typesupport_introspection_cpp.hpp\n'}
+[10.387754] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/gripper_angles__rosidl_typesupport_introspection_cpp.hpp\n'}
+[10.387914] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/include/block_interfaces/block_interfaces/msg/detail/target__type_support.cpp\n'}
+[10.388072] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_introspection_cpp.so\n'}
+[10.388231] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_introspection_cpp.so" to ""\n'}
+[10.388387] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_cpp.so\n'}
+[10.388544] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_typesupport_cpp.so" to ""\n'}
+[10.388698] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/pythonpath.sh\n'}
+[10.388889] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/pythonpath.dsv\n'}
+[10.389042] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info\n'}
+[10.389196] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/top_level.txt\n'}
+[10.389351] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/SOURCES.txt\n'}
+[10.389505] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/dependency_links.txt\n'}
+[10.389692] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces-0.1.0-py3.10.egg-info/PKG-INFO\n'}
+[10.389893] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces\n'}
+[10.390096] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.390327] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/__init__.py\n'}
+[10.390537] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg\n'}
+[10.390737] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_gripper_angles.py\n'}
+[10.390937] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_alignment_command_s.c\n'}
+[10.391138] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/__init__.py\n'}
+[10.391375] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_frame_s.c\n'}
+[10.391582] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_alignment_command.py\n'}
+[10.391771] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_frame.py\n'}
+[10.391922] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_box_s.c\n'}
+[10.392072] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_box.py\n'}
+[10.392236] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_gripper_angles_s.c\n'}
+[10.392413] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_target.py\n'}
+[10.392561] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_target_s.c\n'}
+[10.392714] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.392871] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_introspection_c.c\n'}
+[10.393019] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_c.c\n'}
+[10.393168] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/_block_interfaces_s.ep.rosidl_typesupport_fastrtps_c.c\n'}
+[10.393324] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.393480] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/libblock_interfaces__rosidl_generator_py.so\n'}
+[10.433310] (-) TimerEvent: {}
+[10.467174] (block_interfaces) StdoutLine: {'line': b"Listing '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces'...\n"}
+[10.467825] (block_interfaces) StdoutLine: {'line': b"Compiling '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/__init__.py'...\n"}
+[10.468141] (block_interfaces) StdoutLine: {'line': b"Listing '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg'...\n"}
+[10.468471] (block_interfaces) StdoutLine: {'line': b"Compiling '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/__init__.py'...\n"}
+[10.468728] (block_interfaces) StdoutLine: {'line': b"Compiling '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_alignment_command.py'...\n"}
+[10.468999] (block_interfaces) StdoutLine: {'line': b"Compiling '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_box.py'...\n"}
+[10.469245] (block_interfaces) StdoutLine: {'line': b"Compiling '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_frame.py'...\n"}
+[10.469479] (block_interfaces) StdoutLine: {'line': b"Compiling '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_gripper_angles.py'...\n"}
+[10.469710] (block_interfaces) StdoutLine: {'line': b"Compiling '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/msg/_target.py'...\n"}
+[10.480212] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.481049] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so" to ""\n'}
+[10.481211] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.481480] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so" to ""\n'}
+[10.481832] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so\n'}
+[10.482346] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages/block_interfaces/block_interfaces_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so" to ""\n'}
+[10.482596] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_generator_py.so\n'}
+[10.483360] (block_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/libblock_interfaces__rosidl_generator_py.so" to ""\n'}
+[10.483688] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/rust_packages/block_interfaces\n'}
+[10.483812] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust\n'}
+[10.483980] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/Cargo.toml\n'}
+[10.484197] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/build.rs\n'}
+[10.484303] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src\n'}
+[10.484463] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/lib.rs\n'}
+[10.484562] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/msg.rs\n'}
+[10.484766] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/msg\n'}
+[10.484864] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/rust/src/msg/rmw.rs\n'}
+[10.485079] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Box.idl\n'}
+[10.485359] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Frame.idl\n'}
+[10.485467] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Target.idl\n'}
+[10.485660] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/AlignmentCommand.idl\n'}
+[10.485987] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/GripperAngles.idl\n'}
+[10.486096] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Box.msg\n'}
+[10.486263] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Frame.msg\n'}
+[10.486540] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/Target.msg\n'}
+[10.486692] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/AlignmentCommand.msg\n'}
+[10.486793] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/msg/GripperAngles.msg\n'}
+[10.487001] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/package_run_dependencies/block_interfaces\n'}
+[10.487107] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/parent_prefix_path/block_interfaces\n'}
+[10.487292] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/ament_prefix_path.sh\n'}
+[10.487515] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/ament_prefix_path.dsv\n'}
+[10.487616] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/path.sh\n'}
+[10.487770] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/environment/path.dsv\n'}
+[10.487873] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.bash\n'}
+[10.487970] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.sh\n'}
+[10.488189] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.zsh\n'}
+[10.488461] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/local_setup.dsv\n'}
+[10.488675] (block_interfaces) StdoutLine: {'line': b'-- Installing: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.dsv\n'}
+[10.488903] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/ament_index/resource_index/packages/block_interfaces\n'}
+[10.489119] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_cExport.cmake\n'}
+[10.489278] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_cExport-noconfig.cmake\n'}
+[10.489438] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cExport.cmake\n'}
+[10.489595] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cExport-noconfig.cmake\n'}
+[10.489812] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cExport.cmake\n'}
+[10.490026] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cExport-noconfig.cmake\n'}
+[10.490181] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cExport.cmake\n'}
+[10.490337] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cExport-noconfig.cmake\n'}
+[10.490600] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_cppExport.cmake\n'}
+[10.490906] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cppExport.cmake\n'}
+[10.491472] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake\n'}
+[10.491706] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cppExport.cmake\n'}
+[10.491819] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_introspection_cppExport-noconfig.cmake\n'}
+[10.491924] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cppExport.cmake\n'}
+[10.492022] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfaces__rosidl_typesupport_cppExport-noconfig.cmake\n'}
+[10.492124] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_pyExport.cmake\n'}
+[10.492225] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/export_block_interfaces__rosidl_generator_pyExport-noconfig.cmake\n'}
+[10.492325] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake-extras.cmake\n'}
+[10.492425] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_dependencies-extras.cmake\n'}
+[10.492519] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_include_directories-extras.cmake\n'}
+[10.492636] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_libraries-extras.cmake\n'}
+[10.492736] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/ament_cmake_export_targets-extras.cmake\n'}
+[10.492834] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake\n'}
+[10.492931] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake\n'}
+[10.493028] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/rosidl_cmake_aggregate_target-extras.cmake\n'}
+[10.493130] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfacesConfig.cmake\n'}
+[10.493226] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/cmake/block_interfacesConfig-version.cmake\n'}
+[10.493323] (block_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.xml\n'}
+[10.495566] (block_interfaces) CommandEnded: {'returncode': 0}
+[10.533405] (-) TimerEvent: {}
+[10.534993] (block_interfaces) JobEnded: {'identifier': 'block_interfaces', 'rc': 0}
+[10.537109] (block_perception) JobStarted: {'identifier': 'block_perception'}
+[10.633566] (-) TimerEvent: {}
+[10.733948] (-) TimerEvent: {}
+[10.834310] (-) TimerEvent: {}
+[10.934658] (-) TimerEvent: {}
+[11.035009] (-) TimerEvent: {}
+[11.135363] (-) TimerEvent: {}
+[11.235698] (-) TimerEvent: {}
+[11.336045] (-) TimerEvent: {}
+[11.436387] (-) TimerEvent: {}
+[11.536722] (-) TimerEvent: {}
+[11.637057] (-) TimerEvent: {}
+[11.737395] (-) TimerEvent: {}
+[11.837724] (-) TimerEvent: {}
+[11.938094] (-) TimerEvent: {}
+[11.994527] (block_perception) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'egg_info', '--egg-base', '../../build_gcxl/block_perception', 'build', '--build-base', '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build', 'install', '--record', '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/install.log', '--install-scripts', '$base/lib/block_perception', '--single-version-externally-managed', 'install_data'], 'cwd': '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception', 'env': {'GJS_DEBUG_TOPICS': 'JS ERROR;JS LOG', 'LESSOPEN': '| /usr/bin/lesspipe %s', 'VSCODE_CWD': '/home/nvidia', 'ANTHROPIC_MODEL': 'claude-sonnet-5-5', 'VSCODE_ESM_ENTRYPOINT': 'vs/workbench/api/node/extensionHostProcess', 'AI_AGENT': 'claude-code_2-1-314_agent', 'LANGUAGE': 'zh_CN:en_US:en', 'USER': 'nvidia', 'CLAUDE_CODE_ENTRYPOINT': 'claude-vscode', 'LC_TIME': 'zh_CN.UTF-8', 'VSCODE_NLS_CONFIG': '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/tcf.json","messagesFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c/nls.messages.json","corruptMarkerFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"75539731208fa508a5b042c8fe051beb.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/tcf.json","_cacheRoot":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn","_resolvedLanguagePackCoreLocation":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c","_corruptedFile":"/home/nvidia/.config/Code/clp/75539731208fa508a5b042c8fe051beb.zh-cn/corrupted.info"}', 'GIT_EDITOR': 'true', 'VSCODE_HANDLES_UNCAUGHT_ERRORS': 'true', 'XDG_SESSION_TYPE': 'x11', 'CLAUDE_AGENT_SDK_VERSION': '0.3.314', 'CLAUDE_CODE_SESSION_ATTENDED': '1', 'SHLVL': '0', 'LD_LIBRARY_PATH': '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib:/usr/local/cuda/lib64', 'CLAUDE_CODE_MESSAGING_TOKEN': '256116c39eaf928c619687de9f5a13e6', 'INPUT_METHOD': 'ibus', 'HOME': '/home/nvidia', 'CHROME_DESKTOP': 'code.desktop', 'OLDPWD': '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception', 'DESKTOP_SESSION': 'ubuntu', 'VSCODE_IPC_HOOK': '/run/user/1000/vscode-a9aba010-1.13-main.sock', 'JETSON_L4T': '36.5.0', 'ANTHROPIC_DEFAULT_SONNET_MODEL': 'claude-sonnet-5-5', 'GIO_LAUNCHED_DESKTOP_FILE': '/usr/share/applications/code.desktop', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'JETSON_MODEL': 'NVIDIA Jetson Orin NX Engineering Reference Developer Kit Super', 'CLAUDE_CODE_CHILD_SESSION': '1', 'LC_MONETARY': 'zh_CN.UTF-8', 'COPILOT_OTEL_FILE_EXPORTER_PATH': '/dev/null', 'MANAGERPID': '1385', 'SYSTEMD_EXEC_PID': '1914', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'GIO_LAUNCHED_DESKTOP_FILE_PID': '5697', 'VSCODE_CRASH_REPORTER_PROCESS_TYPE': 'extensionHost', 'VSCODE_L10N_BUNDLE_LOCATION': 'file:///home/nvidia/.vscode/extensions/ms-ceintl.vscode-language-pack-zh-hans-1.131.2026090407/translations/extensions/vscode.markdown-language-features.i18n.json', 'COLCON_PREFIX_PATH': '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl', 'APPLICATION_INSIGHTS_NO_STATSBEAT': 'true', 'ROS_DISTRO': 'humble', 'GTK_IM_MODULE': 'ibus', 'LOGNAME': 'nvidia', 'JETSON_MODULE': 'NVIDIA Jetson Orin NX (16GB ram)', 'JETSON_SERIAL_NUMBER': '1420825015640', 'CLAUDE_CODE_EMIT_STARTUP_TIMING': '1', 'JOURNAL_STREAM': '8:46569', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'CLAUDE_CODE_QUESTION_PREVIEW_FORMAT': 'markdown', 'XDG_SESSION_CLASS': 'user', 'USERNAME': 'nvidia', 'ANTHROPIC_BASE_URL': 'https://api.site', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'FC_FONTATIONS': '1', 'ROS_LOCALHOST_ONLY': '0', 'WINDOWPATH': '2', 'ANTHROPIC_DEFAULT_OPUS_MODEL': 'claude-sonnet-5-5', 'MCP_CONNECTION_NONBLOCKING': 'true', 'PATH': '/home/nvidia/.local/bin:/usr/local/node20/bin:/usr/local/cuda/bin:/home/nvidia/.local/bin:/opt/ros/humble/bin:/usr/local/node20/bin:/usr/local/cuda/bin:/home/nvidia/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin', 'SESSION_MANAGER': 'local/nvidia-desktop:@/tmp/.ICE-unix/1887,unix/nvidia-desktop:/tmp/.ICE-unix/1887', 'INVOCATION_ID': '2de90e8edbaf4c07965cb420b3ab0bfd', 'PAPERSIZE': 'a4', 'COREPACK_ENABLE_AUTO_PIN': '0', 'XDG_MENU_PREFIX': 'gnome-', 'LC_ADDRESS': 'zh_CN.UTF-8', 'XDG_RUNTIME_DIR': '/run/user/1000', 'GDK_BACKEND': 'x11', 'CLAUDE_EFFORT': 'medium', 'DISPLAY': ':0', 'CLAUDE_PID': '7615', 'NoDefaultCurrentDirectoryInExePath': '1', 'LANG': 'zh_CN.UTF-8', 'XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'LC_TELEPHONE': 'zh_CN.UTF-8', 'ANTHROPIC_DEFAULT_HAIKU_MODEL': 'claude-sonnet-5-5', 'XMODIFIERS': '@im=ibus', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1000/gdm/Xauthority', 'JETSON_SOC': 'tegra234', 'SSH_AGENT_LAUNCHER': 'gnome-keyring', 'SSH_AUTH_SOCK': '/run/user/1000/keyring/ssh', 'AMENT_PREFIX_PATH': '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/opt/ros/humble', 'SHELL': '/bin/bash', 'LC_NAME': 'zh_CN.UTF-8', 'CLAUDE_CODE_STARTUP_FAILURE_RESULTS': '1', 'ANTHROPIC_AUTH_TOKEN': 'sk-94956480bb764ba88bd25474e10c1b61', 'MXC_BIN_DIR': '/usr/share/code/resources/app/node_modules.asar.unpacked/@microsoft/mxc-sdk/bin', 'QT_ACCESSIBILITY': '1', 'ELECTRON_RUN_AS_NODE': '1', 'GDMSESSION': 'ubuntu', 'CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING': 'true', 'CLAUDE_CODE_SESSION_ID': 'bdda8898-0af4-48b0-9684-18b833a2e95b', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'CLAUDECODE': '1', 'LC_MEASUREMENT': 'zh_CN.UTF-8', 'GPG_AGENT_INFO': '/run/user/1000/gnupg/S.gpg-agent:0:1', 'GJS_DEBUG_OUTPUT': 'stderr', 'LC_IDENTIFICATION': 'zh_CN.UTF-8', 'QT_IM_MODULE': 'ibus', 'JETSON_CUDA_ARCH_BIN': '8.7', 'PWD': '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'VSCODE_CODE_CACHE_PATH': '/home/nvidia/.config/Code/CachedData/645f29cc3176500b4b5762ba887cf2a7f0ffdf2c', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'CLAUDE_CODE_EXECPATH': '/home/nvidia/.vscode/extensions/anthropic.claude-code-2.1.314-linux-arm64/resources/native-binary/claude', 'PYTHONPATH': '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal/lib/python3.10/site-packages:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'LC_NUMERIC': 'zh_CN.UTF-8', 'CLAUDE_CODE_ENABLE_TASKS': '0', 'LC_PAPER': 'zh_CN.UTF-8', 'COLCON': '1', 'COPILOT_CLI_ENABLED_FEATURE_FLAGS': 'SHELL_SPAWN_BACKEND', 'JETSON_JETPACK': '6.2.2', 'CLAUDE_CODE_MESSAGING_SOCKET': '/run/user/1000/cc-socks/7615.sock', 'CMAKE_PREFIX_PATH': '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream', 'VSCODE_PID': '5697', 'JETSON_P_NUMBER': 'p3767-0000'}, 'shell': False}
+[12.038212] (-) TimerEvent: {}
+[12.138532] (-) TimerEvent: {}
+[12.238878] (-) TimerEvent: {}
+[12.339254] (-) TimerEvent: {}
+[12.439595] (-) TimerEvent: {}
+[12.471931] (block_perception) StdoutLine: {'line': b'running egg_info\n'}
+[12.504893] (block_perception) StdoutLine: {'line': b'writing ../../build_gcxl/block_perception/block_perception.egg-info/PKG-INFO\n'}
+[12.505833] (block_perception) StdoutLine: {'line': b'writing dependency_links to ../../build_gcxl/block_perception/block_perception.egg-info/dependency_links.txt\n'}
+[12.506249] (block_perception) StdoutLine: {'line': b'writing entry points to ../../build_gcxl/block_perception/block_perception.egg-info/entry_points.txt\n'}
+[12.506646] (block_perception) StdoutLine: {'line': b'writing requirements to ../../build_gcxl/block_perception/block_perception.egg-info/requires.txt\n'}
+[12.506849] (block_perception) StdoutLine: {'line': b'writing top-level names to ../../build_gcxl/block_perception/block_perception.egg-info/top_level.txt\n'}
+[12.539709] (-) TimerEvent: {}
+[12.576265] (block_perception) StdoutLine: {'line': b"reading manifest file '../../build_gcxl/block_perception/block_perception.egg-info/SOURCES.txt'\n"}
+[12.578810] (block_perception) StdoutLine: {'line': b"writing manifest file '../../build_gcxl/block_perception/block_perception.egg-info/SOURCES.txt'\n"}
+[12.579301] (block_perception) StdoutLine: {'line': b'running build\n'}
+[12.579463] (block_perception) StdoutLine: {'line': b'running build_py\n'}
+[12.579707] (block_perception) StdoutLine: {'line': b'copying block_perception/core.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception\n'}
+[12.580027] (block_perception) StdoutLine: {'line': b'copying block_perception/actuator.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception\n'}
+[12.580333] (block_perception) StdoutLine: {'line': b'copying block_perception/__init__.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception\n'}
+[12.580635] (block_perception) StdoutLine: {'line': b'copying block_perception/gripper.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception\n'}
+[12.580902] (block_perception) StdoutLine: {'line': b'copying block_perception/debug_log.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception\n'}
+[12.581223] (block_perception) StdoutLine: {'line': b'copying block_perception/nodes.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception\n'}
+[12.582019] (block_perception) StdoutLine: {'line': b'running install\n'}
+[12.590271] (block_perception) StdoutLine: {'line': b'running install_lib\n'}
+[12.623871] (block_perception) StdoutLine: {'line': b'copying /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception/core.py -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception\n'}
+[12.624323] (block_perception) StdoutLine: {'line': b'copying /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception/actuator.py -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception\n'}
+[12.624615] (block_perception) StdoutLine: {'line': b'copying /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception/nodes.py -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception\n'}
+[12.625813] (block_perception) StdoutLine: {'line': b'byte-compiling /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception/core.py to core.cpython-310.pyc\n'}
+[12.628240] (block_perception) StdoutLine: {'line': b'byte-compiling /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception/actuator.py to actuator.cpython-310.pyc\n'}
+[12.630845] (block_perception) StdoutLine: {'line': b'byte-compiling /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception/nodes.py to nodes.cpython-310.pyc\n'}
+[12.637399] (block_perception) StdoutLine: {'line': b'running install_data\n'}
+[12.637752] (block_perception) StdoutLine: {'line': b'copying resource/block_perception -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/ament_index/resource_index/packages\n'}
+[12.638104] (block_perception) StdoutLine: {'line': b'copying package.xml -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception\n'}
+[12.638499] (block_perception) StdoutLine: {'line': b'copying launch/perception.launch.py -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/launch\n'}
+[12.638843] (block_perception) StdoutLine: {'line': b'copying config/blocks_labels.txt -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config\n'}
+[12.639124] (block_perception) StdoutLine: {'line': b'copying config/tracker_blocks.yml -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config\n'}
+[12.639423] (block_perception) StdoutLine: {'line': b'copying config/perception.yaml -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config\n'}
+[12.639756] (block_perception) StdoutLine: {'line': b'copying config/infer_blocks.txt -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config\n'}
+[12.639919] (-) TimerEvent: {}
+[12.640059] (block_perception) StdoutLine: {'line': b'running install_egg_info\n'}
+[12.676744] (block_perception) StdoutLine: {'line': b"removing '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception-0.1.0-py3.10.egg-info' (and everything under it)\n"}
+[12.677319] (block_perception) StdoutLine: {'line': b'Copying ../../build_gcxl/block_perception/block_perception.egg-info to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception-0.1.0-py3.10.egg-info\n'}
+[12.678976] (block_perception) StdoutLine: {'line': b'running install_scripts\n'}
+[12.740085] (-) TimerEvent: {}
+[12.840578] (-) TimerEvent: {}
+[12.920148] (block_perception) StdoutLine: {'line': b'Installing actuator script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception\n'}
+[12.920650] (block_perception) StdoutLine: {'line': b'Installing alignment script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception\n'}
+[12.920908] (block_perception) StdoutLine: {'line': b'Installing camera script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception\n'}
+[12.921152] (block_perception) StdoutLine: {'line': b'Installing display script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception\n'}
+[12.921428] (block_perception) StdoutLine: {'line': b'Installing filter script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception\n'}
+[12.921700] (block_perception) StdoutLine: {'line': b'Installing gripper script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception\n'}
+[12.921965] (block_perception) StdoutLine: {'line': b'Installing selector script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception\n'}
+[12.922883] (block_perception) StdoutLine: {'line': b"writing list of installed files to '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/install.log'\n"}
+[12.940732] (-) TimerEvent: {}
+[13.001073] (block_perception) CommandEnded: {'returncode': 0}
+[13.013813] (block_perception) JobEnded: {'identifier': 'block_perception', 'rc': 0}
+[13.014982] (-) EventReactorShutdown: {}

@@ -3,6 +3,7 @@
 Wire format is specified in docs/serial_protocol.md (keep both in sync).
   host -> MCU: $CMD,<seq>,<lw>,<rw>,<lg>,<rg>,<cp_deg>*<XOR>
   MCU -> host: $FB,<seq>,<pitch_deg>*<XOR>
+With camera_servo off (fixed camera) cp is the constant camera_fixed_deg and $FB is not needed.
 """
 import math
 from rclpy.qos import qos_profile_sensor_data
@@ -55,9 +56,11 @@ def wheel_speeds(forward, yaw, track_width, limit):
 class Actuator(ConfigNode):
     def __init__(self):
         super().__init__('actuator')
-        self.configure(dict(track_width=0.2, wheel_speed_scale=1.0, max_wheel_speed=1.0,
-                            cam_min_deg=-60., cam_max_deg=30.,
-                            claw_init_deg=20., claw_max_deg=90., claw_close_deg=20.,
+        self.configure(dict(camera_servo=False, camera_fixed_deg=0.,
+                            track_width=0.2, wheel_speed_scale=1000., max_wheel_speed=0.5,
+                            cam_min_deg=-15., cam_max_deg=30.,
+                            grasp_pitch_deg=-15., grasp_pitch_tol=0.03,
+                            claw_init_deg=0., claw_max_deg=90., claw_close_deg=0.,
                             pitch_home=0.0, pitch_home_tol=0.03,
                             claw_settle_sec=0.5, pitch_timeout=0.25, pitch_joint='camera_pitch'))
         self.cmd = None
@@ -83,6 +86,7 @@ class Actuator(ConfigNode):
         self.cmd = msg
         if msg.grasp_request and self.state == 'track':
             self.state, self.close_time = 'grasp', None
+            self.dbg.event('state', state='grasp')
 
     def angles(self, msg):
         self.grip = msg
@@ -102,7 +106,10 @@ class Actuator(ConfigNode):
         for line in lines:
             fb = decode_feedback(line)
             if fb is None:
+                if line.strip():
+                    self.dbg.event('rx_bad_frame', every=1., line=line.strip()[:80])
                 continue
+            self.dbg.event('rx_feedback', every=0.5, seq=fb[0], pitch_deg=fb[1])
             joint = JointState(name=[self.settings['pitch_joint']], position=[math.radians(fb[1])])
             joint.header.stamp = self.get_clock().now().to_msg()
             self.joints(joint)
@@ -114,41 +121,57 @@ class Actuator(ConfigNode):
     def compute(self, now):
         """Return (left_wheel, right_wheel, left_claw_deg, right_claw_deg, camera_angle_deg).
 
-        The camera servo takes an absolute angle: the alignment pitch rate (rad/s) is
-        integrated into cam_target and clamped to [cam_min_deg, cam_max_deg].
+        camera_servo on : the camera servo takes an absolute angle; the alignment pitch rate (rad/s)
+                          is integrated into cam_target, clamped to [cam_min_deg, cam_max_deg].
+        camera_servo off: the camera is fixed; cp is the constant camera_fixed_deg and a grasp
+                          closes the claws immediately.
         """
         p = self.settings
+        servo = p['camera_servo']
         lw = rw = 0.
         dt = 0. if self.cam_time is None else min(max(now - self.cam_time, 0.), 0.1)
         self.cam_time = now
-        pitch_fresh = self.pitch_time is not None and now - self.pitch_time <= p['pitch_timeout']
-        if self.cam_target is None:   # start from where the camera really is, else from home
+        pitch_fresh = servo and self.pitch_time is not None and now - self.pitch_time <= p['pitch_timeout']
+        if not servo:
+            self.cam_target = p['camera_fixed_deg']
+        elif self.cam_target is None:   # start from where the camera really is, else from home
             self.cam_target = math.degrees(self.pitch if pitch_fresh else p['pitch_home'])
         if self.state == 'track':
             c = self.cmd
             if self.fresh(c, now) and c.valid:
                 lw, rw = wheel_speeds(c.forward_speed, c.yaw_rate, p['track_width'], p['max_wheel_speed'])
-                self.cam_target += math.degrees(c.pitch_rate) * dt
+                if servo:
+                    self.cam_target += math.degrees(c.pitch_rate) * dt
             g = self.grip
             if self.fresh(g, now) and g.angles_ready:
                 self.claw = max(p['claw_init_deg'], min(p['claw_max_deg'], math.degrees(g.left_angle_rad)))
         elif self.state == 'grasp':
-            # Wheels stopped; claws close in, camera commanded back to its initial pitch.
-            self.claw = max(p['claw_init_deg'], p['claw_close_deg'])
-            self.cam_target = math.degrees(p['pitch_home'])
-            if pitch_fresh and abs(p['pitch_home'] - self.pitch) <= p['pitch_home_tol']:
+            # Wheels stopped. With a camera servo: phase 1 pitches the camera down at the block (claws
+            # stay open), phase 2 closes the claws once the grasp angle is reached.
+            reached = True
+            if servo:
+                self.cam_target = p['grasp_pitch_deg']
+                reached = pitch_fresh and abs(math.radians(p['grasp_pitch_deg']) - self.pitch) <= p['grasp_pitch_tol']
+            if reached:
+                self.claw = max(p['claw_init_deg'], p['claw_close_deg'])
                 if self.close_time is None:
                     self.close_time = now
                 if now - self.close_time >= p['claw_settle_sec']:
                     self.state = 'done'
+                    self.dbg.event('state', state='done')
             else:
                 self.close_time = None
+        elif self.state == 'done' and servo:
+            # Grasp finished; command the camera back to its initial (home) pitch.
+            self.cam_target = math.degrees(p['pitch_home'])
         self.cam_target = max(p['cam_min_deg'], min(p['cam_max_deg'], self.cam_target))
         return lw * p['wheel_speed_scale'], rw * p['wheel_speed_scale'], self.claw, self.claw, self.cam_target
 
     def tick(self):
         lw, rw, lg, rg, cp = self.compute(self.get_clock().now().nanoseconds * 1e-9)
-        self.pub.publish(String(data=encode_command(self.seq, lw, rw, lg, rg, cp)))
+        frame = encode_command(self.seq, lw, rw, lg, rg, cp)
+        self.pub.publish(String(data=frame))
+        self.dbg.event('tx_command', every=0.5, state=self.state, frame=frame, pitch=self.pitch)
         self.seq = (self.seq + 1) % 65536
 
 

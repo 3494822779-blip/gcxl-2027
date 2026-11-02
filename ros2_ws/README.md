@@ -16,7 +16,8 @@ camera（可选 USB/视频文件节点，或外部 ROS 相机驱动）
                       │       ├─ alignment → alignment/command [AlignmentCommand]
                       │       └─ display ← tracks（屏幕窗口）
                       └─ 任意新增节点可直接订阅
-camera/joint_states [sensor_msgs/JointState] → alignment
+camera/joint_states [sensor_msgs/JointState] → alignment（仅 camera_servo=true；actuator 从串口 $FB 反馈发布）
+alignment/command → actuator → serial_tx（$CMD 帧，见 docs/serial_protocol.md）
 target/reset [std_msgs/Bool] → selector
 serial_tx [std_msgs/String] → serial_node（可选串口桥）→ serial_rx [std_msgs/String]
 ```
@@ -26,9 +27,11 @@ serial_tx [std_msgs/String] → serial_node（可选串口桥）→ serial_rx [s
 - 检测：`class_id=0..3`；模板要求 TensorRT FP16。原始候选阈值固定为 0.01，在线 `confidence_threshold` 支持 `[0.01, 1]`。不要在 nvinfer 配置里增加更高的分类阈值，否则降低 ROS 阈值不能恢复已被丢弃的框。候选仍受 NMS/top-k 限制。
 - 选择：按 `y + height` 最大选取真实观测框，同分按置信度和 ID 排序；锁定后不因 pitch、排序变化或丢失切换。长时间丢失仍保持 ID，但禁止继续运动。显式 reset 后重新选取；跟踪器重启或目标 ID 被回收后也需要 reset。
 - 滤波：状态 `[x, y, vx, vy]`，像素坐标和秒，匀速卡尔曼模型。`process_noise` 是加速度噪声方差，`measurement_noise` 是中心点观测噪声方差，`initial_variance` 是初始协方差对角项。目标漏检但图像仍到达时预测，超过 `prediction_timeout` 输出 invalid；长时间后原 ID 恢复则重置速度/协方差。整个视频停止时，指令节点独立超时归零。
-- 对准：`error_x=(x-W/2)/(W/2)`，`error_y=(y-H/2)/(H/2)`。正值分别表示目标在右侧、下侧；死区也是该归一化单位。`yaw_rate`、`pitch_rate` 单位 rad/s，经增益、死区、限幅计算。默认负增益仅是初始示例，必须按实际底盘/云台正方向标定。默认不输出前进/后退指令。
-- pitch：订阅真实反馈 `JointState`，取 `camera_pitch` 的 position（rad）；必须有采集时间戳。`pitch_min..pitch_max` 只代表标定后的可抓取距离带，不是通用测距公式。相机高度、物块高度、安装角或地面条件变化后应重新标定。
-- 抓取：双轴均在死区、目标是真实观测、pitch 反馈未过期且在范围内，持续 `hold_seconds` 后，`grasp_request` **只发出一次**。预测框不触发抓取。之后该锁定周期运动输出保持零，等待执行方完成/取消后发布 reset。执行方需要订阅 reliable 指令、按 ID 去重；一次请求不是具备确认重试的动作协议。
+- 对准：`error_x=(框中心x-W/2)/(W/2)`，`error_y=(框下边缘y-bottom_target·H)/(H/2)`。正值分别表示目标在右侧、下边缘偏下；死区也是该归一化单位。`yaw_rate`、`pitch_rate` 单位 rad/s，经增益、死区、限幅计算。默认负增益仅是初始示例，必须按实际底盘/云台正方向标定。
+- 相机俯仰舵机开关 `camera_servo`（alignment 与 actuator 两节必须一致）：
+  - `false`（相机固定，当前默认）：`pitch_rate=0`，不需要 pitch 反馈。下边缘在目标带（默认画面下 20%）上方时底盘按 `forward_speed` 前进（水平偏差不超过 `forward_max_error_x`），在带下方只停车，不倒车。
+  - `true`：订阅真实反馈 `JointState`，取 `camera_pitch` 的 position（rad）。相机没低到 `grasp_pitch` 时底盘前进，舵机把下边缘带进目标带。`grasp_pitch` 只代表标定后的抓取姿态，不是通用测距公式；相机高度、物块高度、安装角或地面条件变化后应重新标定。
+- 抓取：水平和下边缘都在死区、目标是真实观测（`camera_servo=true` 时还要 pitch 反馈未过期且已低到 `grasp_pitch`），持续 `hold_seconds` 后，`grasp_request` **只发出一次**。预测框不触发抓取。之后该锁定周期运动输出保持零，actuator 合拢夹爪并保持，等待外部发布 reset。执行方需要订阅 reliable 指令、按 ID 去重；一次请求不是具备确认重试的动作协议。
 - 指令：20 Hz 发布，`valid=false` 时两轴为零；消费者必须检查 `header.stamp` 和 `valid_for_sec`，订阅中断后自行停止。目标、pitch 与指令时间必须来自同一 ROS 时钟。相机标定角度和执行方向并未在此工程中虚构。
 
 ## 编译与运行
@@ -73,7 +76,7 @@ ros2 launch block_perception perception.launch.py serial:=true
 
 内置相机节点对图像缩放并转为 RGB；它使用软件读取时间戳，精确同步场景请使用硬件相机驱动和采集时间戳。视频文件按配置帧率播放，到结尾停止，不自动循环。
 
-外部模块发布实际 pitch：
+`camera_servo=true` 时由外部模块发布实际 pitch（`camera_servo=false` 不需要）：
 
 ```bash
 # 仅用于台架调试的示例反馈，不可代替实际云台反馈。
@@ -94,12 +97,12 @@ ros2 param set /filter process_noise 80.0
 ros2 param set /filter measurement_noise 25.0
 ros2 param set /filter prediction_timeout 0.35
 ros2 param set /alignment deadzone_x 0.05
-ros2 param set /alignment deadzone_y 0.05
-ros2 param set /alignment pitch_min -0.9
-ros2 param set /alignment pitch_max -0.6
+ros2 param set /alignment deadzone_y 0.2
+ros2 param set /alignment bottom_target 0.9
+ros2 param set /alignment grasp_pitch -0.3   # 仅 camera_servo=true
 ```
 
-参数回调立即生效并检查非有限数、负方差、无效死区和颠倒的 pitch 区间。修改区间时中间状态也必须合法，需要同时更改时通过 `set_parameters_atomically` 服务提交。改动抓取参数会重新计算持续时间；已发出的抓取请求不会因为调参重复发出。参数不会自动持久化，确认标定后修改 `config/perception.yaml`。
+参数回调立即生效并检查非有限数、负方差、无效死区、越界的 `bottom_target`、颠倒的 pitch 区间。修改区间时中间状态也必须合法，需要同时更改时通过 `set_parameters_atomically` 服务提交。改动抓取参数会重新计算持续时间；已发出的抓取请求不会因为调参重复发出。参数不会自动持久化，确认标定后修改 `config/perception.yaml`。
 
 ## 屏幕显示
 
@@ -116,12 +119,12 @@ ros2 bag record -o block_session /camera/image_raw /camera/joint_states \
 # 算法复现：从 tracks 重算选择、滤波和指令，关闭实时相机/检测/跟踪。
 ros2 launch block_perception perception.launch.py detector:=false tracker:=false use_sim_time:=true
 # 另一个终端，先 source 相同 overlay：仅回放上游输入，避免同一输出话题多个发布者。
-ros2 bag play block_session --clock --topics /tracks /camera/image_raw /camera/joint_states /target/reset
+ros2 bag play block_session --clock --topics /tracks /camera/image_raw /target/reset
 
 # 若要复现 tracker，启动 tracker:=true detector:=false，再只播放：
-# /detections /camera/image_raw /camera/joint_states /target/reset
+# /detections /camera/image_raw /target/reset
 # 若要复现 detector，启动全部算法节点、camera:=false、use_sim_time:=true，
-# 只播放 /camera/image_raw /camera/joint_states /target/reset。
+# 只播放 /camera/image_raw /target/reset。
 ```
 
 只查看既有结果时，不启动算法节点，只启动 bridge 并回放原始记录。`/parameter_events` 记录调参事件，但不会自动恢复参数；复现时加载相同 YAML。回放采用单调时间，重新开始、向后 seek 或循环播放前应重启算法节点和 tracker（旧 ID/时间序列不能延用）。纯回放对准节点不依赖 GPU；重跑 detector/tracker 需要对应 DeepStream 环境。不要把回放生成的指令接到实际执行模块。
@@ -139,7 +142,7 @@ BLOCK_TEST_DEEPSTREAM=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pyt
 # 可选：增加 BLOCK_TEST_IMAGE=/absolute/path/positive.png，要求真实图片检测到至少一个目标。
 ```
 
-当前验证覆盖：三个包编译、锁定不切换、卡尔曼抑噪/预测、超时归零、禁止预测触发抓取、真实 pitch 条件、单次触发、动态参数校验、显示叠加/时间戳匹配、实际 nvtracker 管线。空白图像的 detector 测试只验证模型加载与管线通信；四类检测精度和实体抓取距离仍需实际场景图像、相机和云台反馈进行联调。
+当前验证覆盖：三个包编译、锁定不切换、卡尔曼抑噪/预测、超时归零、禁止预测触发抓取、下边缘进入目标带才前进/触发、单次触发、动态参数校验、显示叠加/时间戳匹配、实际 nvtracker 管线。空白图像的 detector 测试只验证模型加载与管线通信；四类检测精度和实体抓取距离仍需实际场景图像和相机进行联调。
 
 
 

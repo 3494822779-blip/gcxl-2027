@@ -1,0 +1,41 @@
+running egg_info
+writing ../../build_gcxl/block_perception/block_perception.egg-info/PKG-INFO
+writing dependency_links to ../../build_gcxl/block_perception/block_perception.egg-info/dependency_links.txt
+writing entry points to ../../build_gcxl/block_perception/block_perception.egg-info/entry_points.txt
+writing requirements to ../../build_gcxl/block_perception/block_perception.egg-info/requires.txt
+writing top-level names to ../../build_gcxl/block_perception/block_perception.egg-info/top_level.txt
+reading manifest file '../../build_gcxl/block_perception/block_perception.egg-info/SOURCES.txt'
+writing manifest file '../../build_gcxl/block_perception/block_perception.egg-info/SOURCES.txt'
+running build
+running build_py
+copying block_perception/core.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception
+copying block_perception/actuator.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception
+copying block_perception/__init__.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception
+copying block_perception/gripper.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception
+copying block_perception/nodes.py -> /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception
+running install
+running install_lib
+copying /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception/core.py -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception
+copying /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build/lib/block_perception/nodes.py -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception
+byte-compiling /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception/core.py to core.cpython-310.pyc
+byte-compiling /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception/nodes.py to nodes.cpython-310.pyc
+running install_data
+copying resource/block_perception -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/ament_index/resource_index/packages
+copying package.xml -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception
+copying launch/perception.launch.py -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/launch
+copying config/blocks_labels.txt -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config
+copying config/tracker_blocks.yml -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config
+copying config/perception.yaml -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config
+copying config/infer_blocks.txt -> /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/config
+running install_egg_info
+removing '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception-0.1.0-py3.10.egg-info' (and everything under it)
+Copying ../../build_gcxl/block_perception/block_perception.egg-info to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages/block_perception-0.1.0-py3.10.egg-info
+running install_scripts
+Installing actuator script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception
+Installing alignment script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception
+Installing camera script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception
+Installing display script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception
+Installing filter script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception
+Installing gripper script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception
+Installing selector script to /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/block_perception
+writing list of installed files to '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/install.log'

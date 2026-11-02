@@ -1,0 +1,203 @@
+[0.213s] colcon DEBUG Command line arguments: ['/usr/bin/colcon', 'build', '--base-paths', 'ros2_ws/src', '--packages-select', 'block_interfaces', 'block_perception', '--build-base', 'ros2_ws/build_gcxl', '--install-base', 'ros2_ws/install_gcxl']
+[0.213s] colcon DEBUG Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl', install_base='/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl', merge_install=False, symlink_install=False, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=8, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['ros2_ws/src'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=['block_interfaces', 'block_perception'], packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0xffffb6f45720>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0xffffb70433a0>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0xffffb70433a0>>)
+[0.279s] colcon.colcon_core.package_discovery Level 1 discover_packages(colcon_meta) check parameters
+[0.279s] colcon.colcon_core.package_discovery Level 1 discover_packages(recursive) check parameters
+[0.279s] colcon.colcon_core.package_discovery Level 1 discover_packages(ignore) check parameters
+[0.279s] colcon.colcon_core.package_discovery Level 1 discover_packages(path) check parameters
+[0.279s] colcon.colcon_core.package_discovery Level 1 discover_packages(recursive) discover
+[0.280s] colcon.colcon_core.package_discovery INFO Crawling recursively for packages in '/home/nvidia/project/gcxl-2027/ros2_ws/src'
+[0.280s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extensions ['ignore', 'ignore_ament_install']
+[0.280s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'ignore'
+[0.280s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'ignore_ament_install'
+[0.280s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extensions ['colcon_pkg']
+[0.280s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'colcon_pkg'
+[0.280s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extensions ['colcon_meta']
+[0.280s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'colcon_meta'
+[0.281s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extensions ['ros']
+[0.281s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'ros'
+[0.333s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extensions ['cmake', 'python']
+[0.333s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'cmake'
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'python'
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extensions ['python_setup_py']
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src) by extension 'python_setup_py'
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extensions ['ignore', 'ignore_ament_install']
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extension 'ignore'
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extension 'ignore_ament_install'
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extensions ['colcon_pkg']
+[0.334s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extension 'colcon_pkg'
+[0.335s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extensions ['colcon_meta']
+[0.335s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extension 'colcon_meta'
+[0.335s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extensions ['ros']
+[0.335s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_deepstream) by extension 'ros'
+[0.339s] colcon.colcon_core.package_identification DEBUG Package 'ros2_ws/src/block_deepstream' with type 'ros.ament_cmake' and name 'block_deepstream'
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extensions ['ignore', 'ignore_ament_install']
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extension 'ignore'
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extension 'ignore_ament_install'
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extensions ['colcon_pkg']
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extension 'colcon_pkg'
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extensions ['colcon_meta']
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extension 'colcon_meta'
+[0.340s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extensions ['ros']
+[0.341s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_interfaces) by extension 'ros'
+[0.342s] colcon.colcon_core.package_identification DEBUG Package 'ros2_ws/src/block_interfaces' with type 'ros.ament_cmake' and name 'block_interfaces'
+[0.342s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extensions ['ignore', 'ignore_ament_install']
+[0.342s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extension 'ignore'
+[0.342s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extension 'ignore_ament_install'
+[0.342s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extensions ['colcon_pkg']
+[0.342s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extension 'colcon_pkg'
+[0.342s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extensions ['colcon_meta']
+[0.343s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extension 'colcon_meta'
+[0.343s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extensions ['ros']
+[0.343s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/block_perception) by extension 'ros'
+[0.344s] colcon.colcon_core.package_identification DEBUG Package 'ros2_ws/src/block_perception' with type 'ros.ament_python' and name 'block_perception'
+[0.344s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extensions ['ignore', 'ignore_ament_install']
+[0.344s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extension 'ignore'
+[0.345s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extension 'ignore_ament_install'
+[0.345s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extensions ['colcon_pkg']
+[0.345s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extension 'colcon_pkg'
+[0.345s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extensions ['colcon_meta']
+[0.345s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extension 'colcon_meta'
+[0.345s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extensions ['ros']
+[0.345s] colcon.colcon_core.package_identification Level 1 _identify(ros2_ws/src/serial_minimal) by extension 'ros'
+[0.346s] colcon.colcon_core.package_identification DEBUG Package 'ros2_ws/src/serial_minimal' with type 'ros.ament_python' and name 'serial_minimal'
+[0.346s] colcon.colcon_core.package_discovery Level 1 discover_packages(recursive) using defaults
+[0.374s] colcon.colcon_core.package_selection INFO Skipping not selected package 'serial_minimal' in 'ros2_ws/src/serial_minimal'
+[0.374s] colcon.colcon_core.package_selection INFO Skipping not selected package 'block_deepstream' in 'ros2_ws/src/block_deepstream'
+[0.375s] colcon.colcon_core.package_discovery Level 1 discover_packages(prefix_path) check parameters
+[0.375s] colcon.colcon_core.package_discovery Level 1 discover_packages(prefix_path) discover
+[0.378s] colcon.colcon_installed_package_information.package_discovery DEBUG Found 4 installed packages in /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl
+[0.380s] colcon.colcon_installed_package_information.package_discovery DEBUG Found 318 installed packages in /opt/ros/humble
+[0.382s] colcon.colcon_core.package_discovery Level 1 discover_packages(prefix_path) using defaults
+[0.479s] colcon.colcon_core.package_selection WARNING Some selected packages are already built in one or more underlay workspaces:
+	'block_interfaces' is in: /home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces
+If a package in a merged underlay workspace is overridden and it installs headers, then all packages in the overlay must sort their include directories by workspace order. Failure to do so may result in build failures or undefined behavior at run time.
+If the overridden package is used by another package in any underlay, then the overriding package in the overlay must be API and ABI compatible or undefined behavior at run time may occur.
+
+If you understand the risks and want to override a package anyways, add the following to the command line:
+	--allow-overriding block_interfaces
+
+This may be promoted to an error in a future release of colcon-override-check.
+[0.481s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'cmake_args' from command line to 'None'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'cmake_target' from command line to 'None'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'cmake_clean_cache' from command line to 'False'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'cmake_clean_first' from command line to 'False'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'cmake_force_configure' from command line to 'False'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'ament_cmake_args' from command line to 'None'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'catkin_cmake_args' from command line to 'None'
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_interfaces' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.482s] colcon.colcon_core.verb DEBUG Building package 'block_interfaces' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces', 'merge_install': False, 'path': '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces', 'symlink_install': False, 'test_result_base': None}
+[0.482s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'cmake_args' from command line to 'None'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'cmake_target' from command line to 'None'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'cmake_clean_cache' from command line to 'False'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'cmake_clean_first' from command line to 'False'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'cmake_force_configure' from command line to 'False'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'ament_cmake_args' from command line to 'None'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'catkin_cmake_args' from command line to 'None'
+[0.483s] colcon.colcon_core.verb Level 5 set package 'block_perception' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.483s] colcon.colcon_core.verb DEBUG Building package 'block_perception' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception', 'merge_install': False, 'path': '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception', 'symlink_install': False, 'test_result_base': None}
+[0.483s] colcon.colcon_core.executor INFO Executing jobs using 'parallel' executor
+[0.485s] colcon.colcon_parallel_executor.executor.parallel DEBUG run_until_complete
+[0.485s] colcon.colcon_ros.task.ament_cmake.build INFO Building ROS package in '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces' with build type 'ament_cmake'
+[0.486s] colcon.colcon_cmake.task.cmake.build INFO Building CMake package in '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_interfaces'
+[0.489s] colcon.colcon_core.plugin_system INFO Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.490s] colcon.colcon_core.shell INFO Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.490s] colcon.colcon_core.shell DEBUG Skip shell extension 'dsv' for command environment
+[0.508s] colcon.colcon_core.event_handler.log_command DEBUG Invoking command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --build /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces -- -j8 -l8
+[1.306s] colcon.colcon_core.event_handler.log_command DEBUG Invoked command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --build /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces -- -j8 -l8
+[1.327s] colcon.colcon_core.event_handler.log_command DEBUG Invoking command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --install /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces
+[1.439s] colcon.colcon_core.environment Level 1 create_environment_scripts_only(block_interfaces)
+[1.449s] colcon.colcon_core.event_handler.log_command DEBUG Invoked command in '/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/serial_minimal:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception:/opt/ros/humble /usr/bin/cmake --install /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_interfaces
+[1.453s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces' for CMake module files
+[1.455s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces' for CMake config files
+[1.458s] colcon.colcon_core.shell Level 1 create_environment_hook('block_interfaces', 'cmake_prefix_path')
+[1.459s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/cmake_prefix_path.ps1'
+[1.461s] colcon.colcon_core.shell INFO Creating environment descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/cmake_prefix_path.dsv'
+[1.462s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/cmake_prefix_path.sh'
+[1.464s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib'
+[1.464s] colcon.colcon_core.shell Level 1 create_environment_hook('block_interfaces', 'ld_library_path_lib')
+[1.465s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/ld_library_path_lib.ps1'
+[1.467s] colcon.colcon_core.shell INFO Creating environment descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/ld_library_path_lib.dsv'
+[1.467s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/ld_library_path_lib.sh'
+[1.468s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/bin'
+[1.468s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/pkgconfig/block_interfaces.pc'
+[1.469s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/python3.10/site-packages'
+[1.469s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/bin'
+[1.470s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.ps1'
+[1.474s] colcon.colcon_core.shell INFO Creating package descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.dsv'
+[1.475s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.sh'
+[1.477s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.bash'
+[1.479s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.zsh'
+[1.480s] colcon.colcon_core.environment Level 1 create_file_with_runtime_dependencies(/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/colcon-core/packages/block_interfaces)
+[1.481s] colcon.colcon_core.environment Level 1 create_environment_scripts_only(block_interfaces)
+[1.481s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces' for CMake module files
+[1.482s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces' for CMake config files
+[1.484s] colcon.colcon_core.shell Level 1 create_environment_hook('block_interfaces', 'cmake_prefix_path')
+[1.485s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/cmake_prefix_path.ps1'
+[1.486s] colcon.colcon_core.shell INFO Creating environment descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/cmake_prefix_path.dsv'
+[1.487s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/cmake_prefix_path.sh'
+[1.488s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib'
+[1.488s] colcon.colcon_core.shell Level 1 create_environment_hook('block_interfaces', 'ld_library_path_lib')
+[1.489s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/ld_library_path_lib.ps1'
+[1.489s] colcon.colcon_core.shell INFO Creating environment descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/ld_library_path_lib.dsv'
+[1.490s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/hook/ld_library_path_lib.sh'
+[1.491s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/bin'
+[1.491s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/pkgconfig/block_interfaces.pc'
+[1.492s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib/python3.10/site-packages'
+[1.493s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/bin'
+[1.494s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.ps1'
+[1.496s] colcon.colcon_core.shell INFO Creating package descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.dsv'
+[1.497s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.sh'
+[1.498s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.bash'
+[1.498s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/block_interfaces/package.zsh'
+[1.500s] colcon.colcon_core.environment Level 1 create_file_with_runtime_dependencies(/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/share/colcon-core/packages/block_interfaces)
+[1.501s] colcon.colcon_ros.task.ament_python.build INFO Building ROS package in '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception' with build type 'ament_python'
+[1.501s] colcon.colcon_core.shell Level 1 create_environment_hook('block_perception', 'ament_prefix_path')
+[1.502s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/hook/ament_prefix_path.ps1'
+[1.503s] colcon.colcon_core.shell INFO Creating environment descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/hook/ament_prefix_path.dsv'
+[1.504s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/hook/ament_prefix_path.sh'
+[1.505s] colcon.colcon_core.shell INFO Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.505s] colcon.colcon_core.shell DEBUG Skip shell extension 'dsv' for command environment
+[1.922s] colcon.colcon_core.task.python.build INFO Building Python package in '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception'
+[1.923s] colcon.colcon_core.shell INFO Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.923s] colcon.colcon_core.shell DEBUG Skip shell extension 'dsv' for command environment
+[2.933s] colcon.colcon_core.task.python.build DEBUG Available setuptools commands: build_scripts, bdist_dumb, install_lib, symlink_data, install_scripts, check, upload_docs, install_egg_info, dist_info, register, saveopts, build, build_clib, editable_wheel, develop, bdist_wheel, upload, alias, bdist_rpm, install_data, build_py, install, rotate, build_ext, bdist, bdist_egg, sdist, setopt, clean, install_headers, easy_install, egg_info
+[2.939s] colcon.colcon_core.event_handler.log_command DEBUG Invoking command in '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception': CMAKE_PREFIX_PATH=/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream LD_LIBRARY_PATH=/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib:/usr/local/cuda/lib64 PYTHONPATH=/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build_gcxl/block_perception build --build-base /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build install --record /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/install.log --install-scripts $base/lib/block_perception --single-version-externally-managed install_data
+[3.963s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception' for CMake module files
+[3.965s] colcon.colcon_core.event_handler.log_command DEBUG Invoked command in '/home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception' returned '0': CMAKE_PREFIX_PATH=/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_deepstream LD_LIBRARY_PATH=/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib:/usr/local/cuda/lib64 PYTHONPATH=/home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build_gcxl/block_perception build --build-base /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/build install --record /home/nvidia/project/gcxl-2027/ros2_ws/build_gcxl/block_perception/install.log --install-scripts $base/lib/block_perception --single-version-externally-managed install_data
+[3.966s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception' for CMake config files
+[3.967s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib'
+[3.968s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/bin'
+[3.968s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/pkgconfig/block_perception.pc'
+[3.968s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/lib/python3.10/site-packages'
+[3.969s] colcon.colcon_core.shell Level 1 create_environment_hook('block_perception', 'pythonpath')
+[3.969s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/hook/pythonpath.ps1'
+[3.971s] colcon.colcon_core.shell INFO Creating environment descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/hook/pythonpath.dsv'
+[3.972s] colcon.colcon_core.shell INFO Creating environment hook '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/hook/pythonpath.sh'
+[3.973s] colcon.colcon_core.environment Level 1 checking '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/bin'
+[3.974s] colcon.colcon_core.environment Level 1 create_environment_scripts_only(block_perception)
+[3.974s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/package.ps1'
+[3.976s] colcon.colcon_core.shell INFO Creating package descriptor '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/package.dsv'
+[3.978s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/package.sh'
+[3.979s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/package.bash'
+[3.980s] colcon.colcon_core.shell INFO Creating package script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/block_perception/package.zsh'
+[3.980s] colcon.colcon_core.environment Level 1 create_file_with_runtime_dependencies(/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/block_perception/share/colcon-core/packages/block_perception)
+[3.981s] colcon.colcon_parallel_executor.executor.parallel DEBUG closing loop
+[3.982s] colcon.colcon_parallel_executor.executor.parallel DEBUG loop closed
+[3.982s] colcon.colcon_parallel_executor.executor.parallel DEBUG run_until_complete finished with '0'
+[3.982s] colcon.colcon_core.event_reactor DEBUG joining thread
+[3.994s] colcon.colcon_core.plugin_system INFO Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[3.994s] colcon.colcon_core.plugin_system INFO Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[3.994s] colcon.colcon_notification.desktop_notification INFO Sending desktop notification using 'notify2'
+[4.024s] colcon.colcon_core.event_reactor DEBUG joined thread
+[4.026s] colcon.colcon_core.shell INFO Creating prefix script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/local_setup.ps1'
+[4.029s] colcon.colcon_core.shell INFO Creating prefix util module '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/_local_setup_util_ps1.py'
+[4.033s] colcon.colcon_core.shell INFO Creating prefix chain script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/setup.ps1'
+[4.037s] colcon.colcon_core.shell INFO Creating prefix script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/local_setup.sh'
+[4.039s] colcon.colcon_core.shell INFO Creating prefix util module '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/_local_setup_util_sh.py'
+[4.041s] colcon.colcon_core.shell INFO Creating prefix chain script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/setup.sh'
+[4.044s] colcon.colcon_core.shell INFO Creating prefix script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/local_setup.bash'
+[4.046s] colcon.colcon_core.shell INFO Creating prefix chain script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/setup.bash'
+[4.050s] colcon.colcon_core.shell INFO Creating prefix script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/local_setup.zsh'
+[4.051s] colcon.colcon_core.shell INFO Creating prefix chain script '/home/nvidia/project/gcxl-2027/ros2_ws/install_gcxl/setup.zsh'

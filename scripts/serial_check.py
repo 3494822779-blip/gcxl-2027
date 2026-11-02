@@ -3,11 +3,12 @@
 
 Standalone (no ROS). Stop the ROS serial_node first: only one process can use the port.
 
-Sends $CMD frames at 20 Hz (default: wheels stopped, claws at the initial angle, camera
-speed 0, so nothing moves) and counts the $FB feedback frames coming back.
+Sends $CMD frames at 20 Hz (default: wheels stopped, claws at 0 deg, camera servo at 0 deg)
+and counts the $FB camera-pitch feedback frames coming back from the MCU.
 
   scripts/serial_check.py --port /dev/ttyUSB0            # with the MCU connected
   scripts/serial_check.py --port /dev/ttyUSB0 --loopback # TX and RX wired together, no MCU
+  scripts/serial_check.py --port /dev/ttyUSB0 --tx-only  # MCU sends no $FB (fixed camera): only check the port opens and writes
 
 Exit code 0 = pass, 1 = fail.
 """
@@ -31,7 +32,7 @@ def checksum(body):  # same as block_perception.actuator.checksum
 
 
 def encode(seq, lw, rw, lg, rg, cp):
-    body = f'CMD,{seq},{lw:.3f},{rw:.3f},{lg:.1f},{rg:.1f},{cp:.3f}'
+    body = f'CMD,{seq},{lw:.3f},{rw:.3f},{lg:.1f},{rg:.1f},{cp:.1f}'
     return f'${body}*{checksum(body)}'
 
 
@@ -75,8 +76,9 @@ def main():
     ap.add_argument('--rate', type=float, default=20., help='CMD frames per second (default 20)')
     ap.add_argument('--loopback', action='store_true', help='expect our own CMD frames back (TX wired to RX)')
     ap.add_argument('--lw', type=float, default=0.); ap.add_argument('--rw', type=float, default=0.)
-    ap.add_argument('--lg', type=float, default=20.); ap.add_argument('--rg', type=float, default=20.)
+    ap.add_argument('--lg', type=float, default=0.); ap.add_argument('--rg', type=float, default=0.)
     ap.add_argument('--cp', type=float, default=0., help='camera pitch ANGLE in degrees (0 = home)')
+    ap.add_argument('--tx-only', action='store_true', help='do not require $FB frames from the MCU')
     a = ap.parse_args()
     if any(v for v in (a.lw, a.rw)) or a.cp:
         print('WARNING: non-zero wheel command or camera angle; the robot will move. Ctrl+C stops.')
@@ -149,10 +151,11 @@ def main():
     if a.loopback:
         if kinds['CMD'] < 0.9 * sent - 2:
             problems.append(f'loopback echoed {kinds["CMD"]}/{sent} frames: check TX-RX wire / baud')
-    else:
+    elif not a.tx_only:
         if kinds['FB'] == 0 and rx_bytes == 0:
             problems.append('no bytes received at all: check wiring (TX/RX swapped?), baud, common GND, '
-                            'whether the MCU firmware sends $FB (USB-CDC boards may reset when the port opens)')
+                            'whether the MCU firmware sends $FB (USB-CDC boards may reset when the port opens); '
+                            'use --tx-only if the camera is fixed and the MCU sends no feedback')
         elif kinds['FB'] == 0:
             problems.append(f'received {rx_bytes} bytes but no valid $FB line: compare the bytes above with '
                             'docs/serial_protocol.md (frames must end with \\n)')

@@ -63,9 +63,9 @@ def validate(values):
     for name in ['deadzone_x', 'deadzone_y']:
         if name in values and not 0 <= values[name] < 1:
             raise ValueError(f'{name} must be in [0, 1)')
-    if 'pitch_min' in values and values['pitch_min'] > values['pitch_max']:
-        raise ValueError('pitch_min must not exceed pitch_max')
-    for name in ['track_width', 'max_wheel_speed', 'pitch_home_tol',
+    if 'grasp_pitch' in values and not -math.pi / 2 < values['grasp_pitch'] < math.pi / 2:
+        raise ValueError('grasp_pitch must be within (-pi/2, pi/2)')
+    for name in ['track_width', 'max_wheel_speed', 'pitch_home_tol', 'grasp_pitch_tol',
                  'claw_settle_sec', 'mm_per_px', 'link_length']:
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
@@ -76,6 +76,9 @@ def validate(values):
         raise ValueError('bottom_target must be in (0, 1]')
     if 'cam_min_deg' in values and not values['cam_min_deg'] < values['cam_max_deg']:
         raise ValueError('cam_min_deg must be below cam_max_deg')
+    if 'grasp_pitch_deg' in values and 'cam_min_deg' in values and 'cam_max_deg' in values \
+            and not values['cam_min_deg'] <= values['grasp_pitch_deg'] <= values['cam_max_deg']:
+        raise ValueError('grasp_pitch_deg must be within [cam_min_deg, cam_max_deg]')
     # Claws open outward from the initial angle only; never below it.
     if 'claw_init_deg' in values and values['claw_init_deg'] < 0:
         raise ValueError('claw_init_deg must not be negative')

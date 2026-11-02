@@ -11,6 +11,7 @@ from std_msgs.msg import Bool
 from sensor_msgs.msg import JointState
 from block_interfaces.msg import Frame, Target, AlignmentCommand
 from .core import Lock, CVFilter, rate, validate
+from .debug_log import DebugLog
 
 
 def seconds(stamp):
@@ -19,6 +20,7 @@ def seconds(stamp):
 
 class ConfigNode(Node):
     def configure(self, defaults):
+        self.dbg = DebugLog(self)
         self.settings = {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
         validate(self.settings)
         self.add_on_set_parameters_callback(self.update)
@@ -29,7 +31,11 @@ class ConfigNode(Node):
         try:
             validate(proposed)
         except (ValueError, TypeError) as e:
+            self.dbg.event('param_rejected', params={p.name: p.value for p in params}, reason=str(e))
             return SetParametersResult(successful=False, reason=str(e))
+        changed = {k: v for k, v in proposed.items() if self.settings.get(k) != v}
+        if changed:
+            self.dbg.event('param_changed', **changed)
         self.settings = proposed
         return SetParametersResult(successful=True)
 
@@ -37,6 +43,7 @@ class ConfigNode(Node):
 class Selector(Node):
     def __init__(self):
         super().__init__('selector')
+        self.dbg = DebugLog(self)
         self.lock = Lock()
         self.last_stamp = None
         self.pub = self.create_publisher(Target, 'target/raw', 10)
@@ -59,7 +66,10 @@ class Selector(Node):
         if self.last_stamp is not None and stamp <= self.last_stamp:
             return
         self.last_stamp = stamp
+        prev_id = self.lock.id
         b = self.lock.select(msg.boxes)
+        if self.lock.id != prev_id:
+            self.dbg.event('lock_change', old=prev_id, new=self.lock.id, boxes=len(msg.boxes))
         out = Target(header=msg.image.header, image_width=msg.image.width,
                      image_height=msg.image.height, locked=self.lock.id is not None,
                      track_id=self.lock.id or 0, observed=b is not None, valid=b is not None)
@@ -110,11 +120,19 @@ class Filter(ConfigNode):
 
 
 class Alignment(ConfigNode):
+    """Yaw centres the block horizontally. The vertical reference is the block's BOTTOM edge.
+
+    camera_servo on : the camera pitch servo moves the bottom edge into the bottom band; the
+                      chassis drives forward until the camera has pitched down to grasp_pitch.
+    camera_servo off: fixed camera; the chassis drives forward until the bottom edge reaches
+                      the bottom band. pitch_rate is 0 and no pitch feedback is needed.
+    """
     def __init__(self):
         super().__init__('alignment')
-        self.configure(dict(deadzone_x=0.04, deadzone_y=0.2, bottom_target=0.9,
-                            forward_speed=0.15, forward_max_error_x=0.3, yaw_gain=-0.5, pitch_gain=-0.5,
-                            max_yaw_rate=0.3, max_pitch_rate=0.2, pitch_min=-0.8, pitch_max=-0.5,
+        self.configure(dict(camera_servo=False,
+                            deadzone_x=0.04, deadzone_y=0.2, bottom_target=0.9,
+                            forward_speed=0.5, forward_max_error_x=0.3, yaw_gain=-2.0, pitch_gain=-0.5,
+                            max_yaw_rate=2.0, max_pitch_rate=0.2, grasp_pitch=-0.26,
                             pitch_timeout=0.25, input_timeout=0.25, hold_seconds=0.3,
                             pitch_joint='camera_pitch'))
         self.target_msg = None
@@ -155,7 +173,7 @@ class Alignment(ConfigNode):
             stamp = seconds(msg.header.stamp)
             if math.isfinite(value) and (self.pitch_time is None or stamp > self.pitch_time):
                 self.pitch, self.pitch_time = value, stamp
-                if not self.settings['pitch_min'] <= value <= self.settings['pitch_max']:
+                if value > self.settings['grasp_pitch']:
                     self.hold_start = None
         except (ValueError, IndexError):
             pass
@@ -178,16 +196,31 @@ class Alignment(ConfigNode):
             out.error_x = (m.x - m.image_width/2) / (m.image_width/2)
             out.error_y = (m.y - p['bottom_target'] * m.image_height) / (m.image_height/2)
             out.yaw_rate = rate(out.error_x, p['deadzone_x'], p['yaw_gain'], p['max_yaw_rate'])
-            out.pitch_rate = rate(out.error_y, p['deadzone_y'], p['pitch_gain'], p['max_pitch_rate'])
             out.aligned = abs(out.error_x) <= p['deadzone_x'] and abs(out.error_y) <= p['deadzone_y']
-            pitch_fresh = self.pitch_time is not None and 0 <= t - self.pitch_time <= p['pitch_timeout']
-            ready = out.aligned and m.observed and pitch_fresh and p['pitch_min'] <= self.pitch <= p['pitch_max']
-            # Camera not yet down to the grasp band: drive forward (once roughly centred) so the
-            # block's bottom edge drops in the image and the camera can keep tilting down.
-            if (pitch_fresh and self.pitch > p['pitch_max'] and not self.fired
-                    and abs(out.error_x) <= p['forward_max_error_x']):
-                out.forward_speed = p['forward_speed']
-            out.reason = 'aligning' if not out.aligned else 'aligned_waiting_pitch_or_hold'
+            centred = abs(out.error_x) <= p['forward_max_error_x'] and not self.fired
+            out.reason = 'aligning'
+            if p['camera_servo']:
+                out.pitch_rate = rate(out.error_y, p['deadzone_y'], p['pitch_gain'], p['max_pitch_rate'])
+                pitch_fresh = self.pitch_time is not None and 0 <= t - self.pitch_time <= p['pitch_timeout']
+                ready = out.aligned and m.observed and pitch_fresh and self.pitch <= p['grasp_pitch']
+                # Camera not yet down to the grasp angle: drive forward (once roughly centred) so the
+                # block's bottom edge drops in the image and the camera can keep tilting down.
+                if pitch_fresh and self.pitch > p['grasp_pitch'] and centred:
+                    out.forward_speed = p['forward_speed']
+                    out.reason = 'approaching'
+                elif out.aligned:
+                    out.reason = 'aligned_waiting_pitch_or_hold'
+            else:
+                ready = out.aligned and m.observed
+                # Bottom edge above the band = block is far: drive forward once roughly centred.
+                # Below the band = too close: stop (no reverse).
+                if out.error_y < -p['deadzone_y'] and centred:
+                    out.forward_speed = p['forward_speed']
+                    out.reason = 'approaching'
+                elif out.error_y > p['deadzone_y']:
+                    out.reason = 'too_close'
+                elif out.aligned:
+                    out.reason = 'aligned_waiting_hold'
             if ready:
                 if self.hold_start is None:
                     self.hold_start = t
@@ -331,6 +364,9 @@ def run(cls):
     finally:
         # launch can forward SIGINT again while node resources are being destroyed.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+        dbg = getattr(node, 'dbg', None)
+        if dbg is not None:
+            dbg.close()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

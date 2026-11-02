@@ -29,7 +29,7 @@ def stamp_ns(header):
 class Gripper(ConfigNode):
     def __init__(self):
         super().__init__('gripper')
-        self.configure(dict(input_timeout=0.25, claw_init_deg=20., claw_max_deg=90.,
+        self.configure(dict(input_timeout=0.25, claw_init_deg=0., claw_max_deg=90.,
                             claw_margin_mm=5., mm_per_px=0.5,
                             link_ref_deg=60., link_offset=44., link_length=91.))
         self.frames = {}

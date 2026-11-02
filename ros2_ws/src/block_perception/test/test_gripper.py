@@ -46,7 +46,7 @@ def test_exact_locked_edges_and_no_fake_angles(node, frame_first):
     assert (out.left_edge_px, out.right_edge_px) == (300., 390.)
     assert out.angles_ready and out.reason == 'ready'
     d = 0.5 * 90 + 5   # mm_per_px * width + claw_margin_mm
-    expect = 20 + math.degrees(math.acos((44 - d / 2) / 91)) - 60
+    expect = 0 + math.degrees(math.acos((44 - d / 2) / 91)) - 60
     assert out.left_angle_rad == out.right_angle_rad == pytest.approx(math.radians(expect))
     s = node.settings
     assert calculate_angles(0., 640., 640, 480, s)[0] > calculate_angles(0., 90., 640, 480, s)[0]  # wider -> more open

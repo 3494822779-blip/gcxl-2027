@@ -42,7 +42,7 @@ def test_deadzone_saturation_and_validation():
     assert rate(0.02, .04, -.5, .3) == 0
     assert rate(1., .04, -.5, .3) == -.3
     assert rate(-1., .04, -.5, .3) == .3
-    for params in [dict(measurement_noise=0), dict(pitch_min=1., pitch_max=0.),
+    for params in [dict(measurement_noise=0), dict(grasp_pitch=2.), dict(bottom_target=0.),
                    dict(deadzone_x=1.), dict(process_noise=float('nan'))]:
         with pytest.raises(ValueError):
             validate(params)

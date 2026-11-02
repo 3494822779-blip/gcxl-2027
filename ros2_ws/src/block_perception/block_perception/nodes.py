@@ -131,7 +131,7 @@ class Alignment(ConfigNode):
         super().__init__('alignment')
         self.configure(dict(camera_servo=False,
                             deadzone_x=0.04, deadzone_y=0.2, bottom_target=0.9,
-                            forward_speed=0.5, forward_max_error_x=0.3, yaw_gain=-2.0, pitch_gain=-0.5,
+                            forward_speed=0.5, forward_max_error_x=0.3, yaw_gain=-1.0, pitch_gain=-0.5,
                             max_yaw_rate=2.0, max_pitch_rate=0.2, grasp_pitch=-0.26,
                             pitch_timeout=0.25, input_timeout=0.25, hold_seconds=0.3,
                             pitch_joint='camera_pitch'))

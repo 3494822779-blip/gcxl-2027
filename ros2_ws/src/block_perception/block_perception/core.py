@@ -69,7 +69,7 @@ def validate(values):
                  'claw_settle_sec', 'mm_per_px', 'link_length']:
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
-    for name in ['forward_speed', 'forward_max_error_x', 'claw_margin_mm']:
+    for name in ['forward_speed', 'forward_max_error_x', 'claw_margin_mm', 'min_turn_speed']:
         if name in values and values[name] < 0:
             raise ValueError(f'{name} must not be negative')
     if 'bottom_target' in values and not 0 < values['bottom_target'] <= 1:

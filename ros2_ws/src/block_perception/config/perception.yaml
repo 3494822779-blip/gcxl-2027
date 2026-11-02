@@ -23,24 +23,24 @@
 camera:                            # 仅 camera:=true 时启动（内置 USB/视频文件相机）
   ros__parameters:
     source: /dev/video0            # 启动时固定；USB 设备或视频文件绝对路径
-    width: 1280                    # 启动时固定
-    height: 720                    # 启动时固定
-    fps: 60.0                      # 启动时固定
+    width: 640                    # 启动时固定
+    height: 480                    # 启动时固定
+    fps: 30.0                      # 启动时固定
     frame_id: camera_optical_frame # 启动时固定
 
 detector:                          # DeepStream nvinfer/TensorRT，发布 /detections
   ros__parameters:
-    width: 1280                    # 启动时固定
-    height: 720                    # 启动时固定
-    confidence_threshold: 0.9      # 在线可调 [0.01, 1]；nvinfer 原始候选阈值固定 0.01，
+    width: 640                    # 启动时固定
+    height: 480                    # 启动时固定
+    confidence_threshold: 0.8      # 在线可调 [0.01, 1]；nvinfer 原始候选阈值固定 0.01，
                                    # 不要在 infer 配置里调高，否则降低本阈值不能恢复已丢弃的框
     config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/infer_blocks.txt
                                    # 启动时固定；ONNX/engine/标签/parser 路径及 NMS 参数
 
 tracker:                           # DeepStream nvtracker/NvDCF，发布 /tracks
   ros__parameters:
-    width: 1280                    # 启动时固定
-    height: 720                    # 启动时固定
+    width: 640                     # 启动时固定
+    height: 480                    # 启动时固定
     config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/tracker_blocks.yml
                                    # 启动时固定；NvDCF 匹配/状态估计参数
     tracker_library: /opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so
@@ -59,16 +59,17 @@ filter:                            # 卡尔曼滤波，状态 [x, y, vx, vy]，�
 
 alignment:                         # 对准指令，20 Hz 发布 /alignment/command
   ros__parameters:
-    camera_servo: false            # 相机俯仰舵机开关（须与 actuator 一致）。false=相机固定：只靠底盘前进把框下边缘
+    camera_servo: false            # 相机俯仰舵机边前进边转向偏弱开关（须与 actuator 一致）。false=相机固定：只靠底盘前进把框下边缘
                                    # 带进画面下部区间；true=舵机俯仰对准，前进到相机低到 grasp_pitch 为止
     deadzone_x: 0.04               # 归一化死区 [0, 1)；error_x=(框中心x-W/2)/(W/2)，正值=目标在右侧
     deadzone_y: 0.2                # error_y=(框下边缘y-bottom_target*H)/(H/2)，正值=下边缘偏下；
                                    # 0.2 即下边缘在目标线上下各 10% 画面高度内算到位
-    bottom_target: 0.9             # 下边缘目标位置（占画面高度比例），0.9±0.1 = 画面下部 20% 区间
+    bottom_target: 1.0             # 下边缘目标位置（占画面高度比例），0.9±0.1 = 画面下部 20% 区间
     forward_speed: 0.5             # m/s（×wheel_speed_scale=1000 → 下位机收到 500）；舵机关：下边缘在目标带上方（物块还远）时前进，带下方只停车不倒车；
                                    # 舵机开：相机尚未低到 grasp_pitch 时前进
     forward_max_error_x: 0.3       # 水平偏差超过此值（归一化）时不前进，先转向
-    yaw_gain: -2.0                 # rad/s 每单位归一化误差；负值仅为初始示例，须按底盘/云台实际正方向标定。
+    yaw_gain: -2.0                 # rad/s 每单位归一化误差。负值：目标在右（error_x>0）→ yaw<0 → 左轮比右轮快 → 车向右转。
+                                   # 已实测 lw=左轮、正=前进；右轮对应关系待确认。
                                    # 原地转向每侧轮速 = yaw × track_width/2 × wheel_speed_scale，-2.0/2.0 时误差满幅 → ±200
     pitch_gain: -0.5               # 仅 camera_servo=true 时有效
     max_yaw_rate: 2.0              # rad/s 限幅；原地转向时左右轮各 ±200（track_width=0.2、scale=1000）
@@ -100,9 +101,11 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     camera_servo: false            # 相机俯仰舵机开关（须与 alignment 一致）。false 时 CMD 的相机角度固定发
                                    # camera_fixed_deg，不处理 $FB，抓取时夹爪立刻合拢
     camera_fixed_deg: 0.0          # camera_servo=false 时发给下位机的固定相机角度（度）
-    track_width: 0.2               # m；两轮间距，用于差速换算
-    wheel_speed_scale: 1000.0      # 发给下位机的轮速原始值 = m/s × 此系数（0.5 m/s → 500）
-    max_wheel_speed: 0.5           # m/s 限幅，×scale 即下位机收到的轮速上限 ±500
+    track_width: 0.15               # m；两轮间距，用于差速换算
+    wheel_speed_scale: 100.0      # 发给下位机的轮速原始值 = m/s × 此系数（0.5 m/s → 500）
+    max_wheel_speed: 0.5           # m/s 限幅，×scale 即下位机收到的轮速上限
+    min_turn_speed: 0.1            # m/s；只要有转向指令，每侧轮子的转向分量至少这么大（×scale 即下位机收到的值），
+                                   # 避免小偏差时左右轮差太小、电机不动；0 = 关闭
     cam_min_deg: -15.0             # 相机舵机角度指令下限（度，负=低头）；按机械极限，舵机最低只能到 -15°
     cam_max_deg: 30.0              # 上限（度，正=抬头）；alignment 的俯仰速度在此范围内积分成角度
     grasp_pitch_deg: -15.0         # 抓取时相机先低头到的目标角（度，0=回正，负=低头），到位后夹爪才合拢；

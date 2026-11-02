@@ -38,6 +38,11 @@ def test_wheel_mix_and_limit():
     l, r = wheel_speeds(0., 1., .2, 1.)
     assert l == pytest.approx(-.1) and r == pytest.approx(.1)
     assert wheel_speeds(5., 0., .2, 1.) == (1., 1.)
+    # tiny yaw is raised to min_turn per wheel; zero yaw stays straight; sign is kept
+    assert wheel_speeds(0., .01, .2, 1., min_turn=.1) == pytest.approx((-.1, .1))
+    assert wheel_speeds(0., -.01, .2, 1., min_turn=.1) == pytest.approx((.1, -.1))
+    assert wheel_speeds(.3, 0., .2, 1., min_turn=.1) == (.3, .3)
+    assert wheel_speeds(0., 2., .2, 1., min_turn=.1) == pytest.approx((-.2, .2))   # big yaw unchanged
 
 
 def test_claws_follow_angles_but_not_below_init(node):

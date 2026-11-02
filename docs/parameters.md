@@ -33,7 +33,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `bottom_target` | 0.9 | 画面高度比例 (0,1] | 下边缘目标位置。0.9±0.1 即画面下部 20% |
 | `forward_speed` | 0.5 | m/s | 舵机关：下边缘在目标带上方时前进，带下方只停车，不倒车。舵机开：相机没低到 `grasp_pitch` 时前进 |
 | `forward_max_error_x` | 0.3 | 归一化 | 水平偏差超过此值时不前进，先转向 |
-| `yaw_gain` | −2.0 | rad/s 每单位误差 | **符号要标定**：目标在右时底盘应向右转 |
+| `yaw_gain` | −2.0 | rad/s 每单位误差 | 负值：目标在右时左轮比右轮快，车向右转。已实测 `lw`=左轮、正=前进；右轮待确认 |
 | `pitch_gain` | −0.5 | rad/s 每单位误差 | 仅舵机开。**符号要标定**：下边缘偏下时相机应低头（角度减小） |
 | `max_yaw_rate` | 2.0 | rad/s | 转向限幅。原地转向时每侧轮速 = yaw × `track_width`/2 × `wheel_speed_scale`，默认满幅 ±200 |
 | `max_pitch_rate` | 0.2 | rad/s | 仅舵机开。俯仰限幅，约 11°/s |
@@ -67,7 +67,8 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `camera_fixed_deg` | 0.0 | 度 | 舵机关时发给下位机的固定相机角度 |
 | `track_width` | 0.2 | m | 两轮间距，用于差速换算。**要量实物** |
 | `wheel_speed_scale` | 1000 | | 下位机收到的轮速原始值 = m/s × 系数（0.5 m/s → 500） |
-| `max_wheel_speed` | 0.5 | m/s | 轮速限幅，×`wheel_speed_scale` 即下位机收到的上限 ±500 |
+| `max_wheel_speed` | 0.5 | m/s | 轮速限幅，×`wheel_speed_scale` 即下位机收到的上限 |
+| `min_turn_speed` | 0.1 | m/s | 有转向指令时每侧轮子的转向分量至少这么大，避免小偏差时左右轮差太小、电机不动；0=关闭 |
 | `cam_min_deg` | −15.0 | 度 | 仅舵机开。相机角度指令下限（负=低头）。**按机械极限改**（本机舵机最低 −15°） |
 | `cam_max_deg` | 30.0 | 度 | 仅舵机开。相机角度指令上限（正=抬头） |
 | `grasp_pitch_deg` | −15.0 | 度 | 仅舵机开。抓取时相机先低头到的目标角（0=回正，负=低头），**到位后夹爪才合拢**。须在 `[cam_min_deg, cam_max_deg]` 内，须与 alignment 的 `grasp_pitch` 同一角度（deg = rad×180/π） |

@@ -47,9 +47,15 @@ def clamp(v, limit):
     return max(-limit, min(limit, v))
 
 
-def wheel_speeds(forward, yaw, track_width, limit):
-    """Differential drive: forward in m/s, yaw in rad/s (positive = left wheel slower)."""
+def wheel_speeds(forward, yaw, track_width, limit, min_turn=0.):
+    """Differential drive: forward in m/s, yaw in rad/s (positive = left wheel slower).
+
+    A non-zero yaw is never weaker than min_turn m/s per wheel, so a small error still
+    produces a wheel difference the motors can act on.
+    """
     half = yaw * track_width / 2
+    if yaw and abs(half) < min_turn:
+        half = math.copysign(min_turn, half)
     return clamp(forward - half, limit), clamp(forward + half, limit)
 
 
@@ -57,7 +63,7 @@ class Actuator(ConfigNode):
     def __init__(self):
         super().__init__('actuator')
         self.configure(dict(camera_servo=False, camera_fixed_deg=0.,
-                            track_width=0.2, wheel_speed_scale=1000., max_wheel_speed=0.5,
+                            track_width=0.2, wheel_speed_scale=1000., max_wheel_speed=0.5, min_turn_speed=0.1,
                             cam_min_deg=-15., cam_max_deg=30.,
                             grasp_pitch_deg=-15., grasp_pitch_tol=0.03,
                             claw_init_deg=0., claw_max_deg=90., claw_close_deg=0.,
@@ -139,7 +145,8 @@ class Actuator(ConfigNode):
         if self.state == 'track':
             c = self.cmd
             if self.fresh(c, now) and c.valid:
-                lw, rw = wheel_speeds(c.forward_speed, c.yaw_rate, p['track_width'], p['max_wheel_speed'])
+                lw, rw = wheel_speeds(c.forward_speed, c.yaw_rate, p['track_width'], p['max_wheel_speed'],
+                                      p['min_turn_speed'])
                 if servo:
                     self.cam_target += math.degrees(c.pitch_rate) * dt
             g = self.grip

@@ -1,9 +1,10 @@
 import copy
 import math
 import signal
+import threading
 import rclpy
 from rclpy.node import Node
-from rclpy.executors import ExternalShutdownException
+from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.qos import qos_profile_sensor_data
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Bool
@@ -65,7 +66,7 @@ class Selector(Node):
         if b is not None:
             out.class_id = b.class_id
             out.raw_x = out.x = b.x + b.width / 2
-            out.raw_y = out.y = b.y + b.height / 2
+            out.raw_y = out.y = b.y + b.height  # bottom edge, not centre
             out.last_observed = msg.image.header.stamp
         self.pub.publish(out)
 
@@ -111,7 +112,8 @@ class Filter(ConfigNode):
 class Alignment(ConfigNode):
     def __init__(self):
         super().__init__('alignment')
-        self.configure(dict(deadzone_x=0.04, deadzone_y=0.04, yaw_gain=-0.5, pitch_gain=-0.5,
+        self.configure(dict(deadzone_x=0.04, deadzone_y=0.2, bottom_target=0.9,
+                            forward_speed=0.15, forward_max_error_x=0.3, yaw_gain=-0.5, pitch_gain=-0.5,
                             max_yaw_rate=0.3, max_pitch_rate=0.2, pitch_min=-0.8, pitch_max=-0.5,
                             pitch_timeout=0.25, input_timeout=0.25, hold_seconds=0.3,
                             pitch_joint='camera_pitch'))
@@ -143,7 +145,7 @@ class Alignment(ConfigNode):
         self.target_msg = msg
         if (not msg.valid or not msg.observed or msg.image_width == 0 or msg.image_height == 0
                 or abs(msg.x - msg.image_width/2) > self.settings['deadzone_x'] * msg.image_width/2
-                or abs(msg.y - msg.image_height/2) > self.settings['deadzone_y'] * msg.image_height/2):
+                or abs(msg.y - self.settings['bottom_target'] * msg.image_height) > self.settings['deadzone_y'] * msg.image_height/2):
             self.hold_start = None
 
     def joints(self, msg):
@@ -174,12 +176,17 @@ class Alignment(ConfigNode):
             out.header.frame_id = m.header.frame_id
             out.track_id, out.valid, out.predicted = m.track_id, True, not m.observed
             out.error_x = (m.x - m.image_width/2) / (m.image_width/2)
-            out.error_y = (m.y - m.image_height/2) / (m.image_height/2)
+            out.error_y = (m.y - p['bottom_target'] * m.image_height) / (m.image_height/2)
             out.yaw_rate = rate(out.error_x, p['deadzone_x'], p['yaw_gain'], p['max_yaw_rate'])
             out.pitch_rate = rate(out.error_y, p['deadzone_y'], p['pitch_gain'], p['max_pitch_rate'])
             out.aligned = abs(out.error_x) <= p['deadzone_x'] and abs(out.error_y) <= p['deadzone_y']
             pitch_fresh = self.pitch_time is not None and 0 <= t - self.pitch_time <= p['pitch_timeout']
             ready = out.aligned and m.observed and pitch_fresh and p['pitch_min'] <= self.pitch <= p['pitch_max']
+            # Camera not yet down to the grasp band: drive forward (once roughly centred) so the
+            # block's bottom edge drops in the image and the camera can keep tilting down.
+            if (pitch_fresh and self.pitch > p['pitch_max'] and not self.fired
+                    and abs(out.error_x) <= p['forward_max_error_x']):
+                out.forward_speed = p['forward_speed']
             out.reason = 'aligning' if not out.aligned else 'aligned_waiting_pitch_or_hold'
             if ready:
                 if self.hold_start is None:
@@ -189,7 +196,7 @@ class Alignment(ConfigNode):
             else:
                 self.hold_start = None
             if self.fired:
-                out.yaw_rate = out.pitch_rate = 0.
+                out.yaw_rate = out.pitch_rate = out.forward_speed = 0.
                 out.reason = 'grasp_requested_waiting_reset'
         else:
             self.hold_start = None
@@ -197,14 +204,27 @@ class Alignment(ConfigNode):
         self.pub.publish(out)
 
 
-class Annotations(Node):
+class Display(Node):
+    """Shows the tracked frame with boxes and target markers in an on-screen window.
+
+    Double buffered: ROS callbacks render into the back buffer, then swap it with
+    the front buffer. The GUI loop (main thread) shows the front buffer as soon as
+    a new frame is swapped in, so drawing and window refresh never block each other.
+    """
     def __init__(self):
-        super().__init__('annotations')
-        from foxglove_msgs.msg import ImageAnnotations
-        self.msg_type = ImageAnnotations
+        super().__init__('display')
+        self.window = self.declare_parameter('window', 'block_perception').value
         self.frames = {}
         self.targets = {}
-        self.pub = self.create_publisher(ImageAnnotations, 'debug/annotations', 10)
+        self.buffers = [None, None]
+        self.front = 0              # index of the last completed buffer
+        self.showing = None         # index the GUI thread is currently showing
+        self.fresh = False
+        self.shown = False
+        self.closing = False
+        self.cond = threading.Condition()
+        self.draw_ns = None
+        self.fps = 0.
         self.create_subscription(Frame, 'tracks', self.frame, qos_profile_sensor_data)
         self.create_subscription(Target, 'target/filtered', self.target, 10)
 
@@ -226,31 +246,79 @@ class Annotations(Node):
         # Exact timestamp join: never overlay a previous frame's target on a new image.
         if key not in self.frames or key not in self.targets:
             return
-        from foxglove_msgs.msg import PointsAnnotation, TextAnnotation
-        from foxglove_msgs.msg import Point2, Color
+        import cv2, numpy as np
         frame, target = self.frames.pop(key), self.targets.pop(key)
-        out = self.msg_type()
-        stamp = frame.image.header.stamp
-        green = Color(r=0., g=1., b=0., a=1.)
-        yellow = Color(r=1., g=1., b=0., a=1.)
-        cyan = Color(r=0., g=1., b=1., a=1.)
-        def points(coords, color, kind, size):
-            a = PointsAnnotation(timestamp=stamp, type=kind, outline_color=color, fill_color=color if kind == PointsAnnotation.POINTS else Color(), thickness=size)
-            a.points = [Point2(x=float(x), y=float(y)) for x, y in coords]
-            out.points.append(a)
-        def label(x, y, text):
-            out.texts.append(TextAnnotation(timestamp=stamp, position=Point2(x=float(x), y=float(y)), text=text, font_size=16., text_color=green))
+        img = frame.image
+        if img.width == 0 or img.height == 0 or not img.data:
+            return
+        with self.cond:
+            back = 1 - self.front
+            if self.showing == back:
+                return  # GUI still holds the buffer we would overwrite; drop this frame
+        channels = 1 if img.encoding in ('mono8', '8UC1') else 3
+        src = np.frombuffer(img.data, dtype=np.uint8).reshape(img.height, img.width, channels)
+        buf = self.buffers[back]
+        if buf is None or buf.shape != (img.height, img.width, 3):
+            buf = self.buffers[back] = np.empty((img.height, img.width, 3), dtype=np.uint8)
+        if channels == 1:
+            cv2.cvtColor(src, cv2.COLOR_GRAY2BGR, dst=buf)
+        elif img.encoding == 'rgb8':
+            cv2.cvtColor(src, cv2.COLOR_RGB2BGR, dst=buf)
+        else:
+            np.copyto(buf, src)
+        green, yellow, cyan = (0, 255, 0), (0, 255, 255), (255, 255, 0)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        def pt(x, y):
+            return int(round(x)), int(round(y))
         for b in frame.boxes:
-            points([(b.x,b.y), (b.x+b.width,b.y), (b.x+b.width,b.y+b.height), (b.x,b.y+b.height)], green, PointsAnnotation.LINE_LOOP, 2.)
-            label(b.x, max(0., b.y-18), f'class={b.class_id} id={b.track_id} p={b.confidence:.2f}')
+            cv2.rectangle(buf, pt(b.x, b.y), pt(b.x + b.width, b.y + b.height), green, 2)
+            cv2.putText(buf, f'class={b.class_id} id={b.track_id} p={b.confidence:.2f}',
+                        pt(b.x, max(12., b.y - 6)), font, 0.5, green, 1, cv2.LINE_AA)
         if target.valid:
             if target.observed:
-                points([(target.raw_x, target.raw_y)], yellow, PointsAnnotation.POINTS, 7.)
-            points([(target.x, target.y)], cyan, PointsAnnotation.POINTS, 7.)
-            cx, cy = frame.image.width/2, frame.image.height/2
-            points([(cx, cy), (target.x, target.y)], cyan, PointsAnnotation.LINE_LIST, 2.)
-            label(8, 20, f'id={target.track_id} dx={target.x-cx:.1f}px dy={target.y-cy:.1f}px predicted={not target.observed}')
-        self.pub.publish(out)
+                cv2.circle(buf, pt(target.raw_x, target.raw_y), 5, yellow, -1)
+            cv2.circle(buf, pt(target.x, target.y), 5, cyan, -1)
+            cx, cy = img.width / 2, img.height / 2
+            cv2.line(buf, pt(cx, cy), pt(target.x, target.y), cyan, 2)
+            cv2.putText(buf, f'id={target.track_id} dx={target.x-cx:.1f}px dy={target.y-cy:.1f}px predicted={not target.observed}',
+                        (8, 20), font, 0.6, green, 2, cv2.LINE_AA)
+        now = self.get_clock().now().nanoseconds
+        if self.draw_ns is not None and now > self.draw_ns:
+            inst = 1e9 / (now - self.draw_ns)
+            self.fps = 0.9 * self.fps + 0.1 * inst if self.fps else inst
+        self.draw_ns = now
+        cv2.putText(buf, f'{self.fps:.1f} fps', (8, img.height - 10), font, 0.6, green, 2, cv2.LINE_AA)
+        with self.cond:
+            self.front, self.fresh = back, True   # swap: finished back buffer becomes the front
+            self.cond.notify()
+        self.get_logger().info(f'display fps={self.fps:.1f}', throttle_duration_sec=5.)
+
+    def loop(self):
+        """GUI loop; must run in the main thread (OpenCV/Qt window calls)."""
+        import cv2
+        while rclpy.ok() and not self.closing:
+            with self.cond:
+                self.cond.wait_for(lambda: self.fresh or self.closing, timeout=0.05)
+                index = None
+                if self.fresh:
+                    index, self.fresh = self.front, False
+                    self.showing = index
+            if index is None:
+                if self.shown:
+                    cv2.waitKey(1)   # keep the window responsive while idle
+                continue
+            try:
+                cv2.imshow(self.window, self.buffers[index])
+                cv2.waitKey(1)
+                self.shown = True
+            except cv2.error as exc:
+                self.get_logger().error(f'Cannot open display window (is DISPLAY set?): {exc}')
+                self.closing = True
+            finally:
+                with self.cond:
+                    self.showing = None
+        if self.shown:
+            cv2.destroyAllWindows()
 
 
 def run(cls):
@@ -271,7 +339,26 @@ def run(cls):
 def selector_main(): run(Selector)
 def filter_main(): run(Filter)
 def alignment_main(): run(Alignment)
-def annotations_main(): run(Annotations)
+def display_main():
+    rclpy.init()
+    node = Display()
+    executor = SingleThreadedExecutor()
+    executor.add_node(node)
+    spinner = threading.Thread(target=executor.spin, daemon=True)
+    spinner.start()
+    try:
+        node.loop()
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        # launch can forward SIGINT again while node resources are being destroyed.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        node.closing = True
+        executor.shutdown()
+        spinner.join(1.)
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 class Camera(Node):
@@ -335,63 +422,3 @@ class Camera(Node):
 
 
 def camera_main(): run(Camera)
-
-
-class StreamGateway(Node):
-    """Stable, client-friendly topics for custom Foxglove/WebSocket clients."""
-    def __init__(self):
-        super().__init__('stream_gateway')
-        from sensor_msgs.msg import Image, CompressedImage
-        from std_msgs.msg import String
-        from rcl_interfaces.msg import Log
-        import json
-        self.Image, self.CompressedImage, self.String, self.json = Image, CompressedImage, String, json
-        self.image_pub = self.create_publisher(CompressedImage, 'stream/image/jpeg', 10)
-        self.detection_pub = self.create_publisher(String, 'stream/detections', 10)
-        self.log_pub = self.create_publisher(String, 'stream/log', 50)
-        # Lower these to cut bandwidth/latency on the Foxglove link (stream_width 0 = original size).
-        self.stream_width = self.declare_parameter('stream_width', 640).value
-        self.stream_quality = self.declare_parameter('stream_quality', 60).value
-        stream_fps = self.declare_parameter('stream_fps', 20.).value
-        self.min_period_ns = int(1e9 / stream_fps) if stream_fps > 0 else 0
-        self.last_ns = 0
-        self.create_subscription(self.Image, 'camera/image_raw', self.image, qos_profile_sensor_data)
-        self.create_subscription(Frame, 'tracks', self.frame, qos_profile_sensor_data)
-        self.create_subscription(Log, '/rosout', self.rosout, 50)
-
-    def image(self, msg):
-        import cv2, numpy as np
-        now = self.get_clock().now().nanoseconds
-        if now - self.last_ns < self.min_period_ns:
-            return
-        self.last_ns = now
-        try:
-            channels = 1 if msg.encoding in ('mono8', '8UC1') else 3
-            arr = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, channels)
-            if channels == 3 and msg.encoding == 'rgb8':
-                arr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-            if 0 < self.stream_width < msg.width:
-                arr = cv2.resize(arr, (self.stream_width, msg.height * self.stream_width // msg.width),
-                                 interpolation=cv2.INTER_AREA)
-            ok, encoded = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), int(self.stream_quality)])
-            if ok:
-                out = self.CompressedImage(header=msg.header, format='jpeg', data=encoded.tobytes())
-                self.image_pub.publish(out)
-        except Exception as exc:
-            self.get_logger().warning(f'image encode failed: {exc}')
-
-    def frame(self, msg):
-        payload = {'stamp': {'sec': msg.image.header.stamp.sec, 'nanosec': msg.image.header.stamp.nanosec},
-                   'width': msg.image.width, 'height': msg.image.height,
-                   'boxes': [{'track_id': b.track_id, 'class_id': b.class_id, 'confidence': b.confidence,
-                              'x': b.x, 'y': b.y, 'width': b.width, 'height': b.height} for b in msg.boxes]}
-        self.detection_pub.publish(self.String(data=self.json.dumps(payload, separators=(',', ':'))))
-
-    def rosout(self, msg):
-        level = {10: 'DEBUG', 20: 'INFO', 30: 'WARN', 40: 'ERROR', 50: 'FATAL'}.get(msg.level, str(msg.level))
-        self.log_pub.publish(self.String(data=self.json.dumps({'level': level, 'name': msg.name,
-                                                               'message': msg.msg, 'stamp': self.get_clock().now().nanoseconds // 1000000000},
-                                                              ensure_ascii=False, separators=(',', ':'))))
-
-
-def stream_gateway_main(): run(StreamGateway)

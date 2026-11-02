@@ -14,11 +14,11 @@ camera（可选 USB/视频文件节点，或外部 ROS 相机驱动）
                       ├─ selector → target/raw [Target]
                       │   └─ filter → target/filtered [Target]
                       │       ├─ alignment → alignment/command [AlignmentCommand]
-                      │       └─ annotations ← tracks
-                      │            └─ debug/annotations [foxglove_msgs/ImageAnnotations]
+                      │       └─ display ← tracks（屏幕窗口）
                       └─ 任意新增节点可直接订阅
 camera/joint_states [sensor_msgs/JointState] → alignment
 target/reset [std_msgs/Bool] → selector
+serial_tx [std_msgs/String] → serial_node（可选串口桥）→ serial_rx [std_msgs/String]
 ```
 
 每个功能是独立可执行程序和 ROS 进程，仅通过话题和参数连接；检测和跟踪不是把同一管线伪装成两个节点。tracker 从 `Frame` 的图像和检测框重建 `NvDsObjectMeta`，交给真正的 NVIDIA nvtracker，不使用自写 ID 匹配替代。`Frame` 原子携带图像和框，避免跨话题丢帧错配，同时可以独立回放跟踪输入。代价是进程间复制图像，640×480 RGB 每帧约 0.92 MB；输入/中间图像采用 SensorDataQoS（best effort），算法输出和指令采用 reliable。内置单相机、batch=1，输入分辨率固定；需多相机时按命名空间分别启动。
@@ -37,9 +37,8 @@ target/reset [std_msgs/Bool] → selector
 cd /home/nvidia/project/gcxl-2027
 source /opt/ros/humble/setup.bash
 # DeepStream SDK/CUDA 和 YOLO parser 按原工程要求安装/编译。
-# 系统依赖（foxglove_bridge 已安装也可重复执行）：
-sudo apt-get install ros-humble-foxglove-msgs ros-humble-foxglove-bridge \
-  python3-numpy python3-opencv python3-pytest libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+# 系统依赖：
+sudo apt-get install python3-numpy python3-opencv python3-pytest libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 colcon --log-base ros2_ws/log_gcxl build --base-paths ros2_ws/src \
   --build-base ros2_ws/build_gcxl --install-base ros2_ws/install_gcxl
 source ros2_ws/install_gcxl/setup.bash
@@ -60,13 +59,16 @@ cd ../..
 导出器生成 `[1,8400,6]` 的 xyxy/score/class 输出供 DeepStream parser 使用；不能直接替换为 Ultralytics 默认输出格式。TensorRT engine 应在部署设备上生成。
 
 ```bash
-# 内置 USB 相机；也可 source:=/absolute/path/video.mp4
-ros2 launch block_perception perception.launch.py camera:=true \
-  infer_config:="$PWD/ros2_ws/src/block_perception/config/infer_blocks.txt"
+# 内置 USB 相机；全部节点参数统一集中在 config/perception.yaml（相机源、图像尺寸、
+# detector/tracker 的 DeepStream 配置路径、算法参数、串口参数），source 可填视频文件绝对路径。
+ros2 launch block_perception perception.launch.py camera:=true
 
 # 若已有 ROS 相机驱动，camera 默认 false；驱动应发布 /camera/image_raw，rgb8、640x480。
-# width/height 可作为 launch 参数修改；width 必须能被 4 整除。
+# 图像宽高只在 perception.yaml 设置（camera/detector/tracker 三段必须一致，启动时校验）；width 必须能被 4 整除。
 # 外部驱动不满足编码时，应加独立转换节点，不修改检测节点。
+
+# 串口桥默认不启动；需要时加 serial:=true，设备、波特率、轮询周期在 perception.yaml 的 serial_node 段。
+ros2 launch block_perception perception.launch.py serial:=true
 ```
 
 内置相机节点对图像缩放并转为 RGB；它使用软件读取时间戳，精确同步场景请使用硬件相机驱动和采集时间戳。视频文件按配置帧率播放，到结尾停止，不自动循环。
@@ -99,9 +101,9 @@ ros2 param set /alignment pitch_max -0.6
 
 参数回调立即生效并检查非有限数、负方差、无效死区和颠倒的 pitch 区间。修改区间时中间状态也必须合法，需要同时更改时通过 `set_parameters_atomically` 服务提交。改动抓取参数会重新计算持续时间；已发出的抓取请求不会因为调参重复发出。参数不会自动持久化，确认标定后修改 `config/perception.yaml`。
 
-## Foxglove
+## 屏幕显示
 
-launch 默认启动 foxglove_bridge，浏览器/客户端连接 `ws://设备IP:8765`。Image 面板选择 `/camera/image_raw`，在 annotations 设置中启用 `/debug/annotations`，查看绿色检测框/ID、黄色滤波前中心、青色滤波后中心和中心偏差连线。标注按精确图像时间戳匹配，最多缓存 30 帧；不会把旧帧坐标叠加到新帧上。Plot 面板可查看 `/alignment/command.error_x`、`error_y`、`yaw_rate`、`pitch_rate`，Raw Messages 面板查看锁定 ID 和抓取请求。可用 `foxglove:=false annotations:=false` 关闭调试节点。
+launch 默认启动 `display` 节点，在本机屏幕弹出 OpenCV 窗口（需要图形桌面，SSH 下需设置 `DISPLAY`），显示 `/tracks` 携带的图像，叠加绿色检测框/ID、黄色滤波前中心、青色滤波后中心、中心偏差连线和偏差文字。叠加按精确图像时间戳匹配，最多缓存 30 帧；不会把旧帧坐标叠加到新帧上。无显示环境时用 `display:=false` 关闭该节点。对准指令数值可用 `ros2 topic echo /alignment/command` 查看。
 
 ## rosbag 录制与回放
 
@@ -109,7 +111,7 @@ launch 默认启动 foxglove_bridge，浏览器/客户端连接 `ws://设备IP:8
 # 完整调试记录（图像被多个 Frame 消息携带，磁盘流量较高）
 ros2 bag record -o block_session /camera/image_raw /camera/joint_states \
   /detections /tracks /target/raw /target/filtered /target/reset \
-  /alignment/command /debug/annotations /parameter_events
+  /alignment/command /parameter_events
 
 # 算法复现：从 tracks 重算选择、滤波和指令，关闭实时相机/检测/跟踪。
 ros2 launch block_perception perception.launch.py detector:=false tracker:=false use_sim_time:=true
@@ -137,9 +139,9 @@ BLOCK_TEST_DEEPSTREAM=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pyt
 # 可选：增加 BLOCK_TEST_IMAGE=/absolute/path/positive.png，要求真实图片检测到至少一个目标。
 ```
 
-当前验证覆盖：三个包编译、锁定不切换、卡尔曼抑噪/预测、超时归零、禁止预测触发抓取、真实 pitch 条件、单次触发、动态参数校验、Foxglove 消息构造/时间戳匹配、实际 nvtracker 管线。空白图像的 detector 测试只验证模型加载与管线通信；四类检测精度和实体抓取距离仍需实际场景图像、相机和云台反馈进行联调。
+当前验证覆盖：三个包编译、锁定不切换、卡尔曼抑噪/预测、超时归零、禁止预测触发抓取、真实 pitch 条件、单次触发、动态参数校验、显示叠加/时间戳匹配、实际 nvtracker 管线。空白图像的 detector 测试只验证模型加载与管线通信；四类检测精度和实体抓取距离仍需实际场景图像、相机和云台反馈进行联调。
 
-环境依赖包括 `foxglove_msgs` 和 `foxglove_bridge`，可使用上述 apt 命令安装。
+
 
 ## 左右夹爪舵机角度接口（计算方法待实现）
 
@@ -158,4 +160,4 @@ BLOCK_TEST_DEEPSTREAM=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pyt
 该话题是视觉角度建议，不控制舵机，也不改变原有抓取请求条件。执行方未来必须要求
 `angles_ready=true` 且消息采集时间未超过 `valid_for_sec`；对准抓取请求仍来自
 `/alignment/command`。输入中断后节点发布过期状态，`input_timeout` 默认 0.25 秒，支持在线修改。
-Foxglove 可直接查看边界/就绪状态，录包命令加上 `/gripper/angles` 即可保存输出。
+可用 `ros2 topic echo /gripper/angles` 查看边界/就绪状态，录包命令加上 `/gripper/angles` 即可保存输出。

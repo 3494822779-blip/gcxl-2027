@@ -6,13 +6,20 @@ from rclpy.qos import qos_profile_sensor_data
 from .nodes import ConfigNode, run
 
 
-def calculate_angles(left_edge_px, right_edge_px, image_width, image_height):
-    """Return (left_rad, right_rad), or None if no calibrated formula is available.
+def calculate_angles(left_edge_px, right_edge_px, image_width, image_height, s):
+    """Return (left_rad, right_rad): claw servo angles for the block between the two edges.
 
-    Inputs are pixel boundaries in the original image, not normalized errors.
-    TODO: implement the user's geometric/calibrated calculation here.
+    d = mm_per_px * (right - left) + claw_margin_mm is the block width.
+    Linkage formula: dtheta = link_ref_deg - acos((link_offset - d/2) / link_length).
+    dtheta is <= 0 for d >= 0; its magnitude is how far each claw opens, so
+    opening = -dtheta. Servo angle = claw_init_deg + opening, clamped to
+    [claw_init_deg, claw_max_deg]: claws only open outward from the initial angle.
     """
-    return None
+    d = s['mm_per_px'] * (right_edge_px - left_edge_px) + s['claw_margin_mm']
+    ratio = max(-1., min(1., (s['link_offset'] - d / 2) / s['link_length']))
+    dtheta = s['link_ref_deg'] - math.degrees(math.acos(ratio))
+    deg = max(s['claw_init_deg'], min(s['claw_max_deg'], s['claw_init_deg'] - dtheta))
+    return math.radians(deg), math.radians(deg)
 
 
 def stamp_ns(header):
@@ -22,7 +29,9 @@ def stamp_ns(header):
 class Gripper(ConfigNode):
     def __init__(self):
         super().__init__('gripper')
-        self.configure(dict(input_timeout=0.25))
+        self.configure(dict(input_timeout=0.25, claw_init_deg=20., claw_max_deg=90.,
+                            claw_margin_mm=5., mm_per_px=0.5,
+                            link_ref_deg=60., link_offset=44., link_length=91.))
         self.frames = {}
         self.current = None
         self.last_time = None
@@ -81,8 +90,7 @@ class Gripper(ConfigNode):
                 if height > 0 and math.isfinite(left) and math.isfinite(right) and 0 <= left < right <= width:
                     out.bounds_valid = True
                     out.left_edge_px, out.right_edge_px = left, right
-                    angles = calculate_angles(left, right, width, height)
-                    out.reason = 'calculation_not_implemented'
+                    angles = calculate_angles(left, right, width, height, self.settings)
                     if angles is not None:
                         if len(angles) == 2 and all(math.isfinite(a) for a in angles):
                             out.left_angle_rad, out.right_angle_rad = map(float, angles)

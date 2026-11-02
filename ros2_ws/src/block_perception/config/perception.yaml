@@ -1,27 +1,118 @@
-detector:
+# ============================================================================
+# 统一参数配置文件
+#
+# 工作区内所有节点的全部运行参数集中在本文件，每个节点只读取与自己
+# 同名的小节（camera / detector / tracker / filter / alignment / gripper /
+# display / serial_node）；selector 没有可调参数，不在此列。
+#
+# 使用：ros2 launch block_perception perception.launch.py [params:=<其他yaml>]
+#       修改本文件后需重新 colcon build（安装目录中的副本不会自动更新）。
+#
+# 标注"启动时固定"的参数在节点构造时读取，运行中 ros2 param set 无效；
+# 其余算法参数可在线修改，回调立即校验并生效（见 ros2_ws/README.md 在线调参）。
+#
+# 开关类选项（camera / detector / tracker / display / serial / use_sim_time）
+# 仍是 launch 参数，因为它们决定启动哪些进程，不属于节点参数。
+#
+# 本文件中的绝对路径在迁移目录后需同步修改并重新编译。
+# ============================================================================
+
+# ---------- 图像尺寸 ----------
+# camera、detector、tracker 三段必须一致，launch 启动时校验；width 必须能被 4 整除。
+
+camera:                            # 仅 camera:=true 时启动（内置 USB/视频文件相机）
   ros__parameters:
-    confidence_threshold: 0.8
-filter:
+    source: /dev/video0            # 启动时固定；USB 设备或视频文件绝对路径
+    width: 1280                    # 启动时固定
+    height: 720                    # 启动时固定
+    fps: 60.0                      # 启动时固定
+    frame_id: camera_optical_frame # 启动时固定
+
+detector:                          # DeepStream nvinfer/TensorRT，发布 /detections
   ros__parameters:
-    process_noise: 100.0
-    measurement_noise: 16.0
-    initial_variance: 100.0
-    prediction_timeout: 0.4
-alignment:
+    width: 1280                    # 启动时固定
+    height: 720                    # 启动时固定
+    confidence_threshold: 0.9      # 在线可调 [0.01, 1]；nvinfer 原始候选阈值固定 0.01，
+                                   # 不要在 infer 配置里调高，否则降低本阈值不能恢复已丢弃的框
+    config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/infer_blocks.txt
+                                   # 启动时固定；ONNX/engine/标签/parser 路径及 NMS 参数
+
+tracker:                           # DeepStream nvtracker/NvDCF，发布 /tracks
   ros__parameters:
-    deadzone_x: 0.04
-    deadzone_y: 0.04
-    yaw_gain: -0.5
+    width: 1280                    # 启动时固定
+    height: 720                    # 启动时固定
+    config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/tracker_blocks.yml
+                                   # 启动时固定；NvDCF 匹配/状态估计参数
+    tracker_library: /opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so
+                                   # 启动时固定；nvtracker 插件库
+    tracker_width: 640             # 启动时固定；nvtracker 内部处理宽度
+    tracker_height: 384            # 启动时固定；nvtracker 内部处理高度
+
+# ---------- 算法参数（在线可调） ----------
+
+filter:                            # 卡尔曼滤波，状态 [x, y, vx, vy]，像素坐标、秒
+  ros__parameters:
+    process_noise: 100.0           # 加速度噪声方差 (px²/s⁴)
+    measurement_noise: 16.0        # 中心点观测噪声方差 (px²)
+    initial_variance: 100.0        # 初始协方差对角项
+    prediction_timeout: 0.4        # 秒；目标漏检但图像仍到达时预测，超过此时长输出 invalid
+
+alignment:                         # 对准指令，20 Hz 发布 /alignment/command
+  ros__parameters:
+    deadzone_x: 0.04               # 归一化死区 [0, 1)；error_x=(框中心x-W/2)/(W/2)，正值=目标在右侧
+    deadzone_y: 0.2                # error_y=(框下边缘y-bottom_target*H)/(H/2)，正值=下边缘偏下；
+                                   # 0.2 即下边缘在目标线上下各 10% 画面高度内算到位
+    bottom_target: 0.9             # 下边缘目标位置（占画面高度比例），0.9±0.1 = 画面下部 20% 区间
+    forward_speed: 0.15            # m/s；相机尚未低到 pitch_max 时底盘前进速度
+    forward_max_error_x: 0.3       # 水平偏差超过此值（归一化）时不前进，先转向
+    yaw_gain: -0.5                 # rad/s 每单位归一化误差；负值仅为初始示例，须按底盘/云台实际正方向标定
     pitch_gain: -0.5
-    max_yaw_rate: 0.3
+    max_yaw_rate: 0.3              # rad/s 限幅
     max_pitch_rate: 0.2
-    pitch_min: -0.8
-    pitch_max: -0.5
-    pitch_timeout: 0.25
-    input_timeout: 0.25
-    hold_seconds: 0.3
+    pitch_min: -0.8                # rad；标定后的可抓取 pitch 带，不是通用测距公式，
+    pitch_max: -0.5                #      相机高度/物块高度/安装角变化后需重新标定
+    pitch_timeout: 0.25            # 秒；pitch 反馈过期判定
+    input_timeout: 0.25            # 秒；目标消息过期判定，同时写入 valid_for_sec 供消费者检查
+    hold_seconds: 0.3              # 秒；双轴死区内 + 真实观测 + pitch 就绪持续此时长后发出一次抓取请求
+    pitch_joint: camera_pitch      # 订阅 /camera/joint_states 中的关节名
+
+gripper:                           # 框左右边缘 -> 夹爪张开角（发布 /gripper/angles，由 actuator 下发串口）
+  ros__parameters:
+    input_timeout: 0.25            # 秒；目标/图像过期判定
+    claw_init_deg: 20.0            # 夹爪初始角；只能从此角向外张开，不会低于它（须与 actuator 一致）
+    claw_max_deg: 90.0             # 夹爪最大张开角（须与 actuator 一致）
+    claw_margin_mm: 5.0            # 在物体宽度 d 上再加的余量 (mm)
+    mm_per_px: 0.5                 # d = mm_per_px × 框宽(px) + claw_margin_mm；需按实物标定
+    # 张开角 = -Δθ，Δθ = link_ref_deg - arccos((link_offset - d/2) / link_length)
+    # 夹爪舵机角 = claw_init_deg + 张开角，限幅在 [claw_init_deg, claw_max_deg]
+    link_ref_deg: 60.0
+    link_offset: 44.0              # 与 d 同单位 (mm)
+    link_length: 91.0
+
+actuator:                          # 控制量 -> 串口指令（serial_tx），20 Hz
+  ros__parameters:
+    track_width: 0.2               # m；两轮间距，用于差速换算
+    wheel_speed_scale: 1.0         # 发给下位机的轮速 = m/s × 此系数
+    max_wheel_speed: 1.0           # m/s 限幅
+    cam_min_deg: -15.0             # 相机舵机角度指令下限（度，负=低头）；发给下位机的 cp 为绝对角度
+    cam_max_deg: 30.0              # 上限（度，正=抬头）；alignment 的俯仰速度在此范围内积分成角度
+    claw_init_deg: 20.0            # 夹爪初始角（须与 gripper 一致）
+    claw_max_deg: 90.0
+    claw_close_deg: 20.0           # 抓取时合拢到的角度，须在 [claw_init_deg, claw_max_deg]
+    pitch_home: 0.0                # rad；抓取时相机回正的初始角
+    pitch_home_tol: 0.03           # rad；回正到位容差
+    claw_settle_sec: 0.5           # 相机到位后等待夹爪合拢的时间
+    pitch_timeout: 0.25            # 秒；pitch 反馈过期判定
     pitch_joint: camera_pitch
 
-gripper:
+display:                           # OpenCV 屏幕显示窗口（无图形桌面时用 display:=false 关闭）
   ros__parameters:
-    input_timeout: 0.25
+    window: block_perception
+
+# ---------- 串口桥 ----------
+
+serial_node:                       # serial_minimal 包；launch 默认不启动，加 serial:=true
+  ros__parameters:
+    port: /dev/ttyACM0             # 启动时固定；节点启动即打开该串口，无设备时会退出
+    baud: 115200                   # 启动时固定；仅支持 9600/19200/38400/57600/115200
+    poll_period: 0.01              # 启动时固定；读轮询周期（秒）

@@ -65,3 +65,21 @@ def validate(values):
             raise ValueError(f'{name} must be in [0, 1)')
     if 'pitch_min' in values and values['pitch_min'] > values['pitch_max']:
         raise ValueError('pitch_min must not exceed pitch_max')
+    for name in ['track_width', 'max_wheel_speed', 'pitch_home_tol',
+                 'claw_settle_sec', 'mm_per_px', 'link_length']:
+        if name in values and values[name] <= 0:
+            raise ValueError(f'{name} must be positive')
+    for name in ['forward_speed', 'forward_max_error_x', 'claw_margin_mm']:
+        if name in values and values[name] < 0:
+            raise ValueError(f'{name} must not be negative')
+    if 'bottom_target' in values and not 0 < values['bottom_target'] <= 1:
+        raise ValueError('bottom_target must be in (0, 1]')
+    if 'cam_min_deg' in values and not values['cam_min_deg'] < values['cam_max_deg']:
+        raise ValueError('cam_min_deg must be below cam_max_deg')
+    # Claws open outward from the initial angle only; never below it.
+    if 'claw_init_deg' in values and values['claw_init_deg'] < 0:
+        raise ValueError('claw_init_deg must not be negative')
+    if 'claw_max_deg' in values and values['claw_max_deg'] < values['claw_init_deg']:
+        raise ValueError('claw_max_deg must not be below claw_init_deg')
+    if 'claw_close_deg' in values and not values['claw_init_deg'] <= values['claw_close_deg'] <= values['claw_max_deg']:
+        raise ValueError('claw_close_deg must be within [claw_init_deg, claw_max_deg]')

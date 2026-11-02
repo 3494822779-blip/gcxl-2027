@@ -44,9 +44,14 @@ def test_exact_locked_edges_and_no_fake_angles(node, frame_first):
     out = node.pub.messages[-1]
     assert out.track_id == 4 and out.bounds_valid
     assert (out.left_edge_px, out.right_edge_px) == (300., 390.)
-    assert not out.angles_ready and math.isnan(out.left_angle_rad) and math.isnan(out.right_angle_rad)
-    assert out.reason == 'calculation_not_implemented'
-    assert calculate_angles(300., 390., 640, 480) is None
+    assert out.angles_ready and out.reason == 'ready'
+    d = 0.5 * 90 + 5   # mm_per_px * width + claw_margin_mm
+    expect = 20 + math.degrees(math.acos((44 - d / 2) / 91)) - 60
+    assert out.left_angle_rad == out.right_angle_rad == pytest.approx(math.radians(expect))
+    s = node.settings
+    assert calculate_angles(0., 640., 640, 480, s)[0] > calculate_angles(0., 90., 640, 480, s)[0]  # wider -> more open
+    assert calculate_angles(0., 640., 640, 480, s)[0] <= math.radians(s['claw_max_deg'])
+    assert calculate_angles(10., 10., 640, 480, s)[0] >= math.radians(s['claw_init_deg'])  # never inward of init
 
 
 def test_prediction_wrong_frame_and_timeout(node):

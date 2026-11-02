@@ -1,41 +1,52 @@
+import yaml
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
-from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
+
+IMAGE_NODES = ['camera', 'detector', 'tracker']
+
+
+def check_image_size(params_file):
+    """camera, detector and tracker must agree on the image size (set once in the yaml)."""
+    with open(params_file) as f:
+        cfg = yaml.safe_load(f) or {}
+    sizes = {n: (cfg[n]['ros__parameters'].get('width'), cfg[n]['ros__parameters'].get('height'))
+             for n in IMAGE_NODES if n in cfg and cfg[n]}
+    if len(set(sizes.values())) > 1:
+        raise RuntimeError(f'width/height differ between nodes in {params_file}: {sizes}')
+
+
+def launch_nodes(context):
+    # 所有节点参数（含 detector/tracker 的 config_file）统一来自 params 指定的 YAML。
+    check_image_size(LaunchConfiguration('params').perform(context))
+    params = [LaunchConfiguration('params'),
+              {'use_sim_time': ParameterValue(LaunchConfiguration('use_sim_time'), value_type=bool)}]
+    actions = [Node(package='block_perception', executable='camera', name='camera', parameters=params,
+                    condition=IfCondition(LaunchConfiguration('camera')), output='screen')]
+    for name in ['detector', 'tracker']:
+        actions.append(Node(package='block_deepstream', executable=name, name=name,
+                            parameters=params,
+                            condition=IfCondition(LaunchConfiguration(name)), output='screen'))
+    for name in ['selector', 'filter', 'alignment', 'display', 'gripper', 'actuator']:
+        kwargs = {'condition': IfCondition(LaunchConfiguration(name))} if name == 'display' else {}
+        actions.append(Node(package='block_perception', executable=name, name=name,
+                            parameters=params, output='screen', **kwargs))
+    actions.append(Node(package='serial_minimal', executable='serial_node', name='serial_node',
+                        parameters=params,
+                        condition=IfCondition(LaunchConfiguration('serial')), output='screen'))
+    return actions
 
 
 def generate_launch_description():
     share = FindPackageShare('block_perception')
     defaults = {
         'params': PathJoinSubstitution([share, 'config', 'perception.yaml']),
-        'infer_config': PathJoinSubstitution([share, 'config', 'infer_blocks.txt']),
-        'tracker_config': PathJoinSubstitution([share, 'config', 'tracker_blocks.yml']),
-        'camera': 'false', 'source': '/dev/video0', 'width': '1280', 'height': '720', 'fps': '60', 'use_sim_time': 'false',
-        'detector': 'true', 'tracker': 'true', 'annotations': 'true', 'foxglove': 'true',
+        'camera': 'false', 'use_sim_time': 'false',
+        'detector': 'true', 'tracker': 'true', 'display': 'true', 'serial': 'false',
     }
     actions = [DeclareLaunchArgument(k, default_value=v) for k, v in defaults.items()]
-    common = {'use_sim_time': ParameterValue(LaunchConfiguration('use_sim_time'), value_type=bool)}
-    dimensions = {k: ParameterValue(LaunchConfiguration(k), value_type=int) for k in ['width', 'height']}
-    actions.append(Node(package='block_perception', executable='camera', name='camera',
-                        parameters=[common, dimensions, {'source': LaunchConfiguration('source'),
-                                                         'fps': ParameterValue(LaunchConfiguration('fps'), value_type=float)}],
-                        condition=IfCondition(LaunchConfiguration('camera')), output='screen'))
-    for name, cfg in [('detector', 'infer_config'), ('tracker', 'tracker_config')]:
-        actions.append(Node(package='block_deepstream', executable=name, name=name,
-                            parameters=[LaunchConfiguration('params'), common, dimensions,
-                                        {'config_file': LaunchConfiguration(cfg)}],
-                            condition=IfCondition(LaunchConfiguration(name)), output='screen'))
-    for name in ['selector', 'filter', 'alignment', 'annotations', 'gripper']:
-        kwargs = {'condition': IfCondition(LaunchConfiguration(name))} if name == 'annotations' else {}
-        actions.append(Node(package='block_perception', executable=name, name=name,
-                            parameters=[LaunchConfiguration('params'), common], output='screen', **kwargs))
-    actions.append(Node(package='block_perception', executable='stream_gateway', name='stream_gateway', parameters=[common], output='screen'))
-    actions.append(IncludeLaunchDescription(
-        XMLLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare('foxglove_bridge'), 'launch', 'foxglove_bridge_launch.xml'])),
-        condition=IfCondition(LaunchConfiguration('foxglove')),
-        launch_arguments={'use_sim_time': LaunchConfiguration('use_sim_time')}.items()))
-    return LaunchDescription(actions)
+    return LaunchDescription(actions + [OpaqueFunction(function=launch_nodes)])

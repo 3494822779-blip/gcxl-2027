@@ -1,6 +1,6 @@
 ## ROS 2 物块对准抓取
 
-本工程新增独立 ROS 2 感知节点、DeepStream 检测/nvtracker、目标锁定、卡尔曼滤波、对准指令和 Foxglove 调试。编译、模型配置、参数与 rosbag 使用说明见 [ros2_ws/README.md](ros2_ws/README.md)。
+本工程新增独立 ROS 2 感知节点、DeepStream 检测/nvtracker、目标锁定、卡尔曼滤波、对准指令和 屏幕显示调试。编译、模型配置、参数与 rosbag 使用说明见 [ros2_ws/README.md](ros2_ws/README.md)。
 
 # DeepStream-Yolo
 

@@ -6,7 +6,7 @@ from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool
 from block_interfaces.msg import Frame, Box, Target
-from block_perception.nodes import Selector, Filter, Alignment, Annotations
+from block_perception.nodes import Selector, Filter, Alignment, Display
 
 
 class Capture:
@@ -29,7 +29,7 @@ def test_chain_lock_prediction_timeout_reset(nodes):
     frame = Frame()
     frame.image.width, frame.image.height = 640, 480
     frame.image.header.stamp = selector.get_clock().now().to_msg()
-    frame.boxes = [Box(track_id=7, x=300., y=200., width=40., height=80., observed=True),
+    frame.boxes = [Box(track_id=7, x=300., y=352., width=40., height=80., observed=True),
                    Box(track_id=8, x=50., y=100., width=40., height=80., observed=True)]
     selector.frame(frame)
     raw = selector.pub.messages[-1]
@@ -69,7 +69,7 @@ def test_grasp_one_shot_feedback_and_dynamic_parameters(nodes):
     assert not alignment.set_parameters_atomically([Parameter('pitch_min', value=1.), Parameter('pitch_max', value=0.)]).successful
     assert alignment.settings['pitch_min'] == -.8
     assert alignment.set_parameters_atomically([Parameter('deadzone_x', value=.1)]).successful
-    m = Target(locked=True, valid=True, observed=True, track_id=12, image_width=640, image_height=480, x=320., y=240.)
+    m = Target(locked=True, valid=True, observed=True, track_id=12, image_width=640, image_height=480, x=320., y=432.)
     m.header.stamp = alignment.get_clock().now().to_msg()
     alignment.target(m)
     pitch = JointState(name=['camera_pitch'], position=[-.6])
@@ -90,25 +90,38 @@ def test_grasp_one_shot_feedback_and_dynamic_parameters(nodes):
     assert not alignment.pub.messages[-1].grasp_request
 
 
-def test_annotations_exact_join(nodes):
-    pytest.importorskip('foxglove_msgs')
-    annotation = Annotations()
-    annotation.pub = Capture()
+def test_display_exact_join(nodes):
+    display = Display()
     try:
         frame = Frame()
         frame.image.header.stamp.sec = 10
-        frame.image.width, frame.image.height = 640, 480
-        frame.boxes = [Box(track_id=9, width=20., height=20.)]
+        frame.image.width, frame.image.height = 64, 48
+        frame.image.encoding, frame.image.step = 'rgb8', 64 * 3
+        frame.image.data = bytes(64 * 48 * 3)
+        frame.boxes = [Box(track_id=9, x=5., y=5., width=20., height=20.)]
         target = Target(valid=True, observed=True, x=10., y=10., raw_x=11., raw_y=12.)
         target.header.stamp.sec = 11
-        annotation.frame(frame)
-        annotation.target(target)
-        assert not annotation.pub.messages
+        display.frame(frame)
+        display.target(target)
+        assert not display.fresh
         target.header.stamp.sec = 10
-        annotation.target(target)
-        assert len(annotation.pub.messages) == 1
-        msg = annotation.pub.messages[-1]
-        assert len(msg.points) == 4
-        assert msg.points[0].timestamp.sec == 10
+        display.target(target)
+        assert display.fresh and display.front == 1
+        front = display.buffers[display.front]
+        assert front.shape == (48, 64, 3)
+        assert front[5, 5].tolist() == [0, 255, 0]
+        # a second joined frame renders into the other buffer and swaps back
+        frame.image.header.stamp.sec = 12
+        target.header.stamp.sec = 12
+        display.frame(frame)
+        display.target(target)
+        assert display.front == 0 and display.buffers[0] is not display.buffers[1]
+        # GUI still showing the buffer that would be overwritten: frame is dropped
+        display.showing = 1
+        frame.image.header.stamp.sec = 13
+        target.header.stamp.sec = 13
+        display.frame(frame)
+        display.target(target)
+        assert display.front == 0
     finally:
-        annotation.destroy_node()
+        display.destroy_node()

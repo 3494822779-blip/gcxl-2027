@@ -28,6 +28,7 @@ class Bridge : public rclcpp::Node {
   GstClockTime last_pts_ = 0;
   bool have_pts_ = false;
   int width_, height_;
+  int tracker_width_ = 640, tracker_height_ = 384;
   std::atomic<double> confidence_{0.25};
   rclcpp::Publisher<Frame>::SharedPtr pub_;
   rclcpp::Subscription<Frame>::SharedPtr frames_;
@@ -159,6 +160,9 @@ class Bridge : public rclcpp::Node {
     std::string lib;
     if (tracking) {
       lib = declare_parameter("tracker_library", std::string("/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so"), fixed);
+      tracker_width_ = declare_parameter("tracker_width", 640, fixed);
+      tracker_height_ = declare_parameter("tracker_height", 384, fixed);
+      if (tracker_width_ <= 0 || tracker_height_ <= 0) throw std::runtime_error("tracker_width/tracker_height must be positive");
     } else {
       confidence_ = declare_parameter("confidence_threshold", 0.25);
       if (!std::isfinite(confidence_) || confidence_ < 0.01 || confidence_ > 1.) throw std::runtime_error("confidence_threshold must be in [0.01,1]");
@@ -211,7 +215,7 @@ class Bridge : public rclcpp::Node {
     gst_caps_unref(caps);
     auto *algorithm = gst_bin_get_by_name(GST_BIN(pipeline_), "algorithm");
     if (tracking) {
-      g_object_set(algorithm, "ll-lib-file", lib.c_str(), "ll-config-file", config.c_str(), "tracker-width", 640, "tracker-height", 384, nullptr);
+      g_object_set(algorithm, "ll-lib-file", lib.c_str(), "ll-config-file", config.c_str(), "tracker-width", tracker_width_, "tracker-height", tracker_height_, nullptr);
       auto *pad = gst_element_get_static_pad(algorithm, "sink");
       gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, inject, this, nullptr);
       gst_object_unref(pad);

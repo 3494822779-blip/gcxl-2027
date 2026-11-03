@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 import os
+import signal
 import termios
+import threading
+import time
 import tty
 
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor
+from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import String
 
 
@@ -18,6 +23,7 @@ class SerialNode(Node):
         self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('baud', 115200)
         self.declare_parameter('poll_period', 0.01)
+        self.declare_parameter('shutdown_grace', 0.5)
         self.port = self.get_parameter('port').value
         baud = int(self.get_parameter('baud').value)
         if baud not in BAUD:
@@ -51,6 +57,14 @@ class SerialNode(Node):
             msg.data = data.decode(errors='replace')
             self.rx_pub.publish(msg)
 
+    def drain(self):
+        """Keep writing what other nodes still publish, so their last frames (the actuator's stop
+        frames) reach the MCU before the port closes."""
+        grace = float(self.get_parameter('shutdown_grace').value)
+        deadline = time.monotonic() + max(grace, 0.)
+        while time.monotonic() < deadline and rclpy.ok():
+            yield
+
     def destroy_node(self):
         if getattr(self, 'fd', None) is not None:
             os.close(self.fd)
@@ -58,16 +72,31 @@ class SerialNode(Node):
         super().destroy_node()
 
 
+STOP = threading.Event()
+
+
 def main(args=None):
-    rclpy.init(args=args)
+    # Handle SIGINT/SIGTERM here instead of letting rclpy invalidate the context first: the port
+    # stays open for shutdown_grace seconds so the actuator's stop frames are still written.
+    rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: STOP.set())
     node = SerialNode()
+    executor = SingleThreadedExecutor()
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
+        while rclpy.ok() and not STOP.is_set():
+            executor.spin_once(timeout_sec=0.1)
+        for _ in node.drain():
+            executor.spin_once(timeout_sec=0.02)
     finally:
+        # launch forwards SIGINT again during teardown; rclpy.shutdown() would restore the default.
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, signal.SIG_IGN)
+        executor.shutdown()
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

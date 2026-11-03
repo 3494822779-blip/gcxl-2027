@@ -1,8 +1,0 @@
-[console_scripts]
-alignment = block_perception.nodes:alignment_main
-annotations = block_perception.nodes:annotations_main
-camera = block_perception.nodes:camera_main
-filter = block_perception.nodes:filter_main
-gripper = block_perception.gripper:main
-selector = block_perception.nodes:selector_main
-stream_gateway = block_perception.nodes:stream_gateway_main

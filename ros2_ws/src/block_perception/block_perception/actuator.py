@@ -6,6 +6,7 @@ Wire format is specified in docs/serial_protocol.md (keep both in sync).
 With camera_servo off (fixed camera) cp is the constant camera_fixed_deg and $FB is not needed.
 """
 import math
+import time
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import JointState
 from std_msgs.msg import String
@@ -180,6 +181,19 @@ class Actuator(ConfigNode):
         self.pub.publish(String(data=frame))
         self.dbg.event('tx_command', every=0.5, state=self.state, frame=frame, pitch=self.pitch)
         self.seq = (self.seq + 1) % 65536
+
+    def on_stop(self, repeats=5, period=0.02):
+        """Graceful exit: stop the wheels now instead of waiting for the MCU's 250 ms timeout.
+
+        Claws and camera keep their last target (docs/serial_protocol.md section 6: they hold
+        position on timeout, so they do here too). Several frames, because a single serial_tx
+        message can be lost while the other nodes are shutting down.
+        """
+        cam = self.cam_target if self.cam_target is not None else self.settings['camera_fixed_deg']
+        for _ in range(repeats):
+            self.pub.publish(String(data=encode_command(self.seq, 0., 0., self.claw, self.claw, cam)))
+            self.seq = (self.seq + 1) % 65536
+            time.sleep(period)
 
 
 def main():

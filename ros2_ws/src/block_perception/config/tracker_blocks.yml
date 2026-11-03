@@ -18,12 +18,12 @@ DataAssociator:
   associationMatcherType: 1
   checkClassMatch: 1
   minMatchingScore4Overall: 0.4
-  minMatchingScore4SizeSimilarity: 0.3
+  minMatchingScore4SizeSimilarity: 0.15
   minMatchingScore4Iou: 0.2
-  minMatchingScore4VisualSimilarity: 0.5
-  matchingScoreWeight4VisualSimilarity: 0.4
-  matchingScoreWeight4SizeSimilarity: 0.3
-  matchingScoreWeight4Iou: 0.3
+  minMatchingScore4VisualSimilarity: 0.3
+  matchingScoreWeight4VisualSimilarity: 0.6
+  matchingScoreWeight4SizeSimilarity: 0.2
+  matchingScoreWeight4Iou: 0.2
   tentativeDetectorConfidence: 0.01
   minMatchingScore4TentativeIou: 0.5
 StateEstimator:

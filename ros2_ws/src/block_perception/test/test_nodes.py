@@ -103,6 +103,47 @@ def test_fixed_camera_drives_forward_until_bottom_edge_in_band(nodes):
     assert out.forward_speed == 0 and out.reason == 'too_close' and not out.aligned
 
 
+def test_yaw_gain_fades_as_the_block_gets_closer(nodes):
+    _, _, alignment = nodes
+    yaw = []
+    for y in (100., 300., 420.):          # far -> near; same error_x = 0.3 (outside every deadzone)
+        target_at(alignment, y, x=416.)
+        alignment.tick()
+        yaw.append(abs(alignment.pub.messages[-1].yaw_rate))
+    assert yaw[0] > yaw[1] > yaw[2] > 0   # weighted down smoothly, never a hard zero
+    # floor = yaw_near_weight (0.2); offset weight at error_x 0.3 = 0.3 / yaw_full_error_x (0.5) = 0.6
+    assert yaw[2] == pytest.approx(0.3 * 0.2 * 0.6 * abs(alignment.settings['yaw_gain']))
+
+
+def test_yaw_gain_scales_with_offset_from_screen_centre(nodes):
+    _, _, alignment = nodes
+    assert alignment.set_parameters_atomically([Parameter('yaw_near_weight', value=1.)]).successful
+    yaw = []
+    for x in (352., 416., 480., 600.):   # error_x = 0.1, 0.3, 0.5, 0.875 at the same distance
+        target_at(alignment, 100., x=x)
+        alignment.tick()
+        yaw.append(abs(alignment.pub.messages[-1].yaw_rate))
+    gain = abs(alignment.settings['yaw_gain'])
+    assert yaw[0] == pytest.approx(0.1 * gain * 0.3)     # floored at yaw_center_weight
+    assert yaw[1] == pytest.approx(0.3 * gain * 0.6)     # 0.3 / yaw_full_error_x
+    assert yaw[2] == pytest.approx(0.5 * gain)           # full gain from yaw_full_error_x on
+    assert yaw[3] == pytest.approx(0.875 * gain)
+    assert not alignment.set_parameters_atomically([Parameter('yaw_full_error_x', value=0.)]).successful
+
+
+def test_x_deadzone_widens_towards_the_target_line(nodes):
+    _, _, alignment = nodes
+    target_at(alignment, 300., x=365.)   # error_x = 0.14: far, outside the still-narrow deadzone
+    alignment.tick()
+    out = alignment.pub.messages[-1]
+    assert not out.aligned and out.yaw_rate != 0
+    target_at(alignment, 432., x=365.)   # same error_x on the target line: inside grasp_error_x
+    alignment.tick()
+    out = alignment.pub.messages[-1]
+    assert out.aligned and out.yaw_rate == 0
+    assert alignment.set_parameters_atomically([Parameter('yaw_near_weight', value=1.5)]).successful is False
+
+
 def test_camera_servo_mode_needs_pitch_and_drives_forward_until_it_is_down(nodes):
     _, _, alignment = nodes
     assert alignment.set_parameters_atomically([Parameter('camera_servo', value=True)]).successful
@@ -125,6 +166,24 @@ def test_camera_servo_mode_needs_pitch_and_drives_forward_until_it_is_down(nodes
     alignment.hold_start -= .4
     alignment.tick()
     assert alignment.pub.messages[-1].grasp_request
+
+
+def test_selector_follows_block_after_tracker_id_change(nodes):
+    selector = nodes[0]
+    def send(sec, boxes):
+        f = Frame()
+        f.image.width, f.image.height = 640, 480
+        f.image.header.stamp.sec = sec
+        f.boxes = boxes
+        selector.frame(f)
+        return selector.pub.messages[-1]
+    block = dict(class_id=2, x=100., y=300., width=300., height=178., observed=True)
+    assert send(10, [Box(track_id=21, **block)]).track_id == 21
+    lost = send(11, [])
+    assert lost.locked and not lost.observed and lost.track_id == 21
+    again = send(12, [Box(track_id=22, **block)])
+    assert again.observed and again.track_id == 22
+    assert selector.set_parameters_atomically([Parameter('rebind_iou', value=2.)]).successful is False
 
 
 def test_display_exact_join(nodes):

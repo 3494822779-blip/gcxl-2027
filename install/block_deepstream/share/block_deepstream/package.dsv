@@ -1,8 +1,0 @@
-source;share/block_deepstream/hook/cmake_prefix_path.ps1
-source;share/block_deepstream/hook/cmake_prefix_path.dsv
-source;share/block_deepstream/hook/cmake_prefix_path.sh
-source;share/block_deepstream/local_setup.bash
-source;share/block_deepstream/local_setup.dsv
-source;share/block_deepstream/local_setup.ps1
-source;share/block_deepstream/local_setup.sh
-source;share/block_deepstream/local_setup.zsh

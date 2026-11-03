@@ -3,7 +3,7 @@
 #
 # 工作区内所有节点的全部运行参数集中在本文件，每个节点只读取与自己
 # 同名的小节（camera / detector / tracker / filter / alignment / gripper /
-# display / serial_node）；selector 没有可调参数，不在此列。
+# display / serial_node / selector）。
 #
 # 使用：ros2 launch block_perception perception.launch.py [params:=<其他yaml>]
 #       修改本文件后需重新 colcon build（安装目录中的副本不会自动更新）。
@@ -46,29 +46,38 @@ tracker:                           # DeepStream nvtracker/NvDCF，发布 /tracks
     tracker_library: /opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so
                                    # 启动时固定；nvtracker 插件库
     tracker_width: 640             # 启动时固定；nvtracker 内部处理宽度
-    tracker_height: 384            # 启动时固定；nvtracker 内部处理高度
+    tracker_height: 480            # 启动时固定；nvtracker 内部处理高度
 
 # ---------- 算法参数（在线可调） ----------
 
+selector:                          # 目标选择与锁定
+  ros__parameters:
+    rebind_iou: 0.3                # [0, 1]；锁定的 ID 消失后，同类别、与最后位置框的 IoU 不低于此值的新 ID 视为同一个物块并接管；0=关闭
+    rebind_timeout: 3.0            # 秒；最后一次看到锁定目标之后，超过此时长不再接管新 ID
+
 filter:                            # 卡尔曼滤波，状态 [x, y, vx, vy]，像素坐标、秒
   ros__parameters:
-    process_noise: 100.0           # 加速度噪声方差 (px²/s⁴)
-    measurement_noise: 16.0        # 中心点观测噪声方差 (px²)
+    process_noise: 400.0           # 加速度噪声方差 (px²/s⁴)
+    measurement_noise: 50.0        # 中心点观测噪声方差 (px²)
     initial_variance: 100.0        # 初始协方差对角项
-    prediction_timeout: 0.4        # 秒；目标漏检但图像仍到达时预测，超过此时长输出 invalid
+    prediction_timeout: 0.8        # 秒；目标漏检但图像仍到达时预测，超过此时长输出 invalid
 
 alignment:                         # 对准指令，20 Hz 发布 /alignment/command
   ros__parameters:
     camera_servo: false            # 相机俯仰舵机边前进边转向偏弱开关（须与 actuator 一致）。false=相机固定：只靠底盘前进把框下边缘
                                    # 带进画面下部区间；true=舵机俯仰对准，前进到相机低到 grasp_pitch 为止
-    deadzone_x: 0.04               # 归一化死区 [0, 1)；error_x=(框中心x-W/2)/(W/2)，正值=目标在右侧
+    deadzone_x: 0.02               # 归一化死区 [0, 1)；error_x=(框中心x-W/2)/(W/2)，正值=目标在右侧
     deadzone_y: 0.2                # error_y=(框下边缘y-bottom_target*H)/(H/2)，正值=下边缘偏下；
                                    # 0.2 即下边缘在目标线上下各 10% 画面高度内算到位
     bottom_target: 1.0             # 下边缘目标位置（占画面高度比例），0.9±0.1 = 画面下部 20% 区间
     forward_speed: 0.5             # m/s（×wheel_speed_scale=1000 → 下位机收到 500）；舵机关：下边缘在目标带上方（物块还远）时前进，带下方只停车不倒车；
                                    # 舵机开：相机尚未低到 grasp_pitch 时前进
     forward_max_error_x: 0.3       # 水平偏差超过此值（归一化）时不前进，先转向
-    yaw_gain: -2.0                 # rad/s 每单位归一化误差。负值：目标在右（error_x>0）→ yaw<0 → 左轮比右轮快 → 车向右转。
+    grasp_error_x: 0.15            # 物块到达下边缘目标线时的水平死区（归一化）；远处用 deadzone_x，越近越宽，线性过渡
+    yaw_near_weight: 0.2           # [0, 1]；转向增益权重：远处=1（全增益，前期转到位），越近越小，最低到此值（到达目标线时）
+    yaw_center_weight: 0.3         # [0, 1]；转向增益的偏离权重下限：目标在画面中心附近时增益只剩这个比例（防小偏差来回摆）
+    yaw_full_error_x: 0.7          # (0, 1]；|error_x| 达到此值（归一化）及以上时偏离权重=1（全增益），之间线性过渡
+    yaw_gain: -1.25               # rad/s 每单位归一化误差。负值：目标在右（error_x>0）→ yaw<0 → 左轮比右轮快 → 车向右转。
                                    # 已实测 lw=左轮、正=前进；右轮对应关系待确认。
                                    # 原地转向每侧轮速 = yaw × track_width/2 × wheel_speed_scale，-2.0/2.0 时误差满幅 → ±200
     pitch_gain: -0.5               # 仅 camera_servo=true 时有效
@@ -104,14 +113,14 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     track_width: 0.15               # m；两轮间距，用于差速换算
     wheel_speed_scale: 100.0      # 发给下位机的轮速原始值 = m/s × 此系数（0.5 m/s → 500）
     max_wheel_speed: 0.5           # m/s 限幅，×scale 即下位机收到的轮速上限
-    min_turn_speed: 0.1            # m/s；只要有转向指令，每侧轮子的转向分量至少这么大（×scale 即下位机收到的值），
+    min_turn_speed: 0.17            # m/s；只要有转向指令，每侧轮子的转向分量至少这么大（×scale 即下位机收到的值），
                                    # 避免小偏差时左右轮差太小、电机不动；0 = 关闭
     cam_min_deg: -15.0             # 相机舵机角度指令下限（度，负=低头）；按机械极限，舵机最低只能到 -15°
-    cam_max_deg: 30.0              # 上限（度，正=抬头）；alignment 的俯仰速度在此范围内积分成角度
-    grasp_pitch_deg: -15.0         # 抓取时相机先低头到的目标角（度，0=回正，负=低头），到位后夹爪才合拢；
+    cam_max_deg: 75.0              # 上限（度，正=抬头）；alignment 的俯仰速度在此范围内积分成角度
+    grasp_pitch_deg: 5.0       # 抓取时相机先低头到的目标角（度，0=回正，负=低头），到位后夹爪才合拢；
                                    # 须与 alignment 的 grasp_pitch 同一角度（-15° = -0.26 rad），
                                    # 且须在 [cam_min_deg, cam_max_deg] 内；按实际抓取姿态标定
-    grasp_pitch_tol: 0.03          # rad；相机到达 grasp_pitch_deg 的到位容差（约 1.7°）
+    grasp_pitch_tol: 0.06          # rad；相机到达 grasp_pitch_deg 的到位容差（约 1.7°）
     claw_init_deg: 0.0             # 夹爪初始角（合拢位置，须与 gripper 一致）
     claw_max_deg: 90.0
     claw_close_deg: 0.0            # 抓取时合拢到的角度（回到初始角），须在 [claw_init_deg, claw_max_deg]

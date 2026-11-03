@@ -14,7 +14,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 
 相机目前不能调俯仰，默认 `camera_servo: false`（alignment 和 actuator 两节必须一致）。舵机相关代码和参数都保留，把它改成 `true` 即恢复舵机模式。
 
-1. 选目标：下边缘离画面底最近的框，锁定 track_id（无参数）。
+1. 选目标：下边缘离画面底最近的框，锁定 track_id；追踪器给同一物块换 ID 时锁定会跟过去 → `rebind_iou`、`rebind_timeout`。
 2. 底盘转向：框中心 x 对准画面中心 → `deadzone_x`、`yaw_gain`、`max_yaw_rate`、`track_width`。
 3. 垂直方向：
    - `camera_servo=false`：下边缘还在目标带上方（物块远），底盘前进，直到下边缘进入画面下 20% → `bottom_target`、`deadzone_y`、`forward_speed`、`forward_max_error_x`。
@@ -22,6 +22,15 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 4. 夹爪张开：框左右边缘 → 张开角 → `mm_per_px`、`claw_margin_mm`、`link_*`、`claw_init_deg`、`claw_max_deg`。
 5. 触发抓取：水平和下边缘都在死区内、实测观测并持续 → `hold_seconds`（舵机开时还要相机低头到 `grasp_pitch`）。
 6. 抓取执行：停轮，夹爪合拢 → `claw_close_deg`、`claw_settle_sec`（舵机开时相机先低头到 `grasp_pitch_deg`，夹完后回正 → `grasp_pitch_deg`、`grasp_pitch_tol`、`pitch_home`、`pitch_home_tol`）。
+
+## selector（目标选择与锁定，在线可调）
+
+锁定的 ID 消失后，如果追踪器给同一个物块换了新 ID（物块贴到画面边缘时出现过），锁定会跟过去。
+
+| 参数 | 默认 | 单位 | 说明 |
+|---|---|---|---|
+| `rebind_iou` | 0.3 | [0,1] | 新 ID 的框与最后一次看到锁定目标时的框，IoU 不低于此值且类别相同，就视为同一个物块。0=关闭 |
+| `rebind_timeout` | 3.0 | 秒 | 最后一次看到锁定目标之后，超过此时长不再接管新 ID |
 
 ## alignment（20 Hz 发布 /alignment/command，在线可调）
 
@@ -33,6 +42,10 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `bottom_target` | 0.9 | 画面高度比例 (0,1] | 下边缘目标位置。0.9±0.1 即画面下部 20% |
 | `forward_speed` | 0.5 | m/s | 舵机关：下边缘在目标带上方时前进，带下方只停车，不倒车。舵机开：相机没低到 `grasp_pitch` 时前进 |
 | `forward_max_error_x` | 0.3 | 归一化 | 水平偏差超过此值时不前进，先转向 |
+| `grasp_error_x` | 0.15 | 归一化 | 物块下边缘到达目标线时的水平死区。水平死区按距离从 `deadzone_x`（远）线性放宽到此值（近），转向和抓取判定共用 |
+| `yaw_near_weight` | 0.2 | [0,1] | 转向增益的距离权重：远处为 1（全增益，前期转到位），随下边缘接近目标线线性降到此值。1=不衰减，0=到线时不再转向 |
+| `yaw_center_weight` | 0.3 | [0,1] | 转向增益的偏离权重下限。偏离权重 = `max(yaw_center_weight, min(1, \|error_x\|/yaw_full_error_x))`，目标靠近画面中心时增益只剩此比例。1=不按偏离衰减 |
+| `yaw_full_error_x` | 0.5 | 归一化 (0,1] | `\|error_x\|` 达到此值及以上时偏离权重为 1（全增益），以内线性过渡 |
 | `yaw_gain` | −2.0 | rad/s 每单位误差 | 负值：目标在右时左轮比右轮快，车向右转。已实测 `lw`=左轮、正=前进；右轮待确认 |
 | `pitch_gain` | −0.5 | rad/s 每单位误差 | 仅舵机开。**符号要标定**：下边缘偏下时相机应低头（角度减小） |
 | `max_yaw_rate` | 2.0 | rad/s | 转向限幅。原地转向时每侧轮速 = yaw × `track_width`/2 × `wheel_speed_scale`，默认满幅 ±200 |

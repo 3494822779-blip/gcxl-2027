@@ -2,10 +2,12 @@ import copy
 import math
 import signal
 import threading
+import time
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.signals import SignalHandlerOptions
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Bool
 from sensor_msgs.msg import JointState
@@ -16,6 +18,24 @@ from .debug_log import DebugLog
 
 def seconds(stamp):
     return stamp.sec + stamp.nanosec * 1e-9
+
+
+# Set by SIGINT/SIGTERM. rclpy's own handler would invalidate the ROS context first, and a node
+# can then no longer publish; handling the signals here lets on_stop() still send (actuator: stop frames).
+STOP = threading.Event()
+
+
+def init_ros():
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: STOP.set())
+
+
+def ignore_signals():
+    # launch forwards SIGINT again while teardown runs, and rclpy.shutdown() restores the default
+    # handler, which would kill the process halfway (exit code -2).
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, signal.SIG_IGN)
 
 
 class ConfigNode(Node):
@@ -40,19 +60,25 @@ class ConfigNode(Node):
         return SetParametersResult(successful=True)
 
 
-class Selector(Node):
+class Selector(ConfigNode):
     def __init__(self):
         super().__init__('selector')
-        self.dbg = DebugLog(self)
-        self.lock = Lock()
+        self.configure(dict(rebind_iou=0.3, rebind_timeout=3.0))
+        self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
         self.last_stamp = None
         self.pub = self.create_publisher(Target, 'target/raw', 10)
         self.create_subscription(Frame, 'tracks', self.frame, qos_profile_sensor_data)
         self.create_subscription(Bool, 'target/reset', self.reset, 10)
 
+    def update(self, params):
+        result = super().update(params)
+        if result.successful:
+            self.lock.rebind_iou, self.lock.rebind_timeout = self.settings['rebind_iou'], self.settings['rebind_timeout']
+        return result
+
     def reset(self, msg):
         if msg.data:
-            self.lock = Lock()
+            self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
             self.last_stamp = None
             # Explicit unlock immediately propagates through the filter and decision.
             self.pub.publish(Target(header=self.get_header()))
@@ -67,9 +93,20 @@ class Selector(Node):
             return
         self.last_stamp = stamp
         prev_id = self.lock.id
-        b = self.lock.select(msg.boxes)
+        b = self.lock.select(msg.boxes, stamp)
         if self.lock.id != prev_id:
-            self.dbg.event('lock_change', old=prev_id, new=self.lock.id, boxes=len(msg.boxes))
+            self.dbg.event('lock_change', old=prev_id, new=self.lock.id, boxes=len(msg.boxes),
+                           rebound=prev_id is not None)
+        if self.lock.id is not None and b is None:
+            # Locked ID is not in this frame: log what the tracker did output instead
+            # [track_id, class_id, confidence, observed, width, height, bottom_y].
+            self.dbg.event('lock_lost', every=0.3, lock_id=self.lock.id, n=len(msg.boxes),
+                           boxes=[[x.track_id, x.class_id, round(x.confidence, 2), x.observed,
+                                   round(x.width), round(x.height), round(x.y + x.height)] for x in msg.boxes[:6]])
+        elif b is not None:
+            self.dbg.event('lock_seen', every=1., lock_id=b.track_id, class_id=b.class_id,
+                           confidence=round(b.confidence, 2), w=round(b.width), h=round(b.height),
+                           bottom=round(b.y + b.height), n=len(msg.boxes))
         out = Target(header=msg.image.header, image_width=msg.image.width,
                      image_height=msg.image.height, locked=self.lock.id is not None,
                      track_id=self.lock.id or 0, observed=b is not None, valid=b is not None)
@@ -131,7 +168,9 @@ class Alignment(ConfigNode):
         super().__init__('alignment')
         self.configure(dict(camera_servo=False,
                             deadzone_x=0.04, deadzone_y=0.2, bottom_target=0.9,
-                            forward_speed=0.5, forward_max_error_x=0.3, yaw_gain=-1.0, pitch_gain=-0.5,
+                            forward_speed=0.5, forward_max_error_x=0.3, grasp_error_x=0.15,
+                            yaw_near_weight=0.2, yaw_center_weight=0.3, yaw_full_error_x=0.5,
+                            yaw_gain=-1.0, pitch_gain=-0.5,
                             max_yaw_rate=2.0, max_pitch_rate=0.2, grasp_pitch=-0.26,
                             pitch_timeout=0.25, input_timeout=0.25, hold_seconds=0.3,
                             pitch_joint='camera_pitch'))
@@ -153,6 +192,15 @@ class Alignment(ConfigNode):
             self.hold_start = None
         return result
 
+    def closeness(self, y, height):
+        """0 = bottom edge at the top of the image (far), 1 = at the bottom target line (grasp spot)."""
+        return max(0., min(1., y / (self.settings['bottom_target'] * height)))
+
+    def x_deadzone(self, y, height):
+        """Horizontal deadzone widens from deadzone_x (far) to grasp_error_x (close): late turns matter less."""
+        p = self.settings
+        return p['deadzone_x'] + max(0., p['grasp_error_x'] - p['deadzone_x']) * self.closeness(y, height)
+
     def target(self, msg):
         if self.target_msg is not None and msg.locked and seconds(msg.header.stamp) <= seconds(self.target_msg.header.stamp):
             return
@@ -162,7 +210,7 @@ class Alignment(ConfigNode):
         self.identity = identity
         self.target_msg = msg
         if (not msg.valid or not msg.observed or msg.image_width == 0 or msg.image_height == 0
-                or abs(msg.x - msg.image_width/2) > self.settings['deadzone_x'] * msg.image_width/2
+                or abs(msg.x - msg.image_width/2) > self.x_deadzone(msg.y, msg.image_height) * msg.image_width/2
                 or abs(msg.y - self.settings['bottom_target'] * msg.image_height) > self.settings['deadzone_y'] * msg.image_height/2):
             self.hold_start = None
 
@@ -195,8 +243,17 @@ class Alignment(ConfigNode):
             out.track_id, out.valid, out.predicted = m.track_id, True, not m.observed
             out.error_x = (m.x - m.image_width/2) / (m.image_width/2)
             out.error_y = (m.y - p['bottom_target'] * m.image_height) / (m.image_height/2)
-            out.yaw_rate = rate(out.error_x, p['deadzone_x'], p['yaw_gain'], p['max_yaw_rate'])
-            out.aligned = abs(out.error_x) <= p['deadzone_x'] and abs(out.error_y) <= p['deadzone_y']
+            # Steering is weighted by distance: full gain while the block is far (turn early), fading
+            # to yaw_near_weight as the bottom edge nears the target line, with a deadzone that widens
+            # the same way. No hard switch, so there is no latch to chatter on.
+            near = self.closeness(m.y, m.image_height)
+            dead_x = self.x_deadzone(m.y, m.image_height)
+            # A second weight from the offset ratio |error_x|: gentle near the centre, full gain once
+            # the block is yaw_full_error_x or more off-centre.
+            offset = max(p['yaw_center_weight'], min(1., abs(out.error_x) / p['yaw_full_error_x']))
+            gain = p['yaw_gain'] * max(p['yaw_near_weight'], 1. - near) * offset
+            out.yaw_rate = rate(out.error_x, dead_x, gain, p['max_yaw_rate'])
+            out.aligned = abs(out.error_x) <= dead_x and abs(out.error_y) <= p['deadzone_y']
             centred = abs(out.error_x) <= p['forward_max_error_x'] and not self.fired
             out.reason = 'aligning'
             if p['camera_servo']:
@@ -329,7 +386,7 @@ class Display(Node):
     def loop(self):
         """GUI loop; must run in the main thread (OpenCV/Qt window calls)."""
         import cv2
-        while rclpy.ok() and not self.closing:
+        while rclpy.ok() and not self.closing and not STOP.is_set():
             with self.cond:
                 self.cond.wait_for(lambda: self.fresh or self.closing, timeout=0.05)
                 index = None
@@ -355,19 +412,35 @@ class Display(Node):
 
 
 def run(cls):
-    rclpy.init()
-    node = cls()
+    """Spin until SIGINT/SIGTERM, then stop in order: on_stop() hook, executor, node, context.
+
+    A repeated signal during teardown only sets the (already set) flag, so it cannot cut teardown
+    short. A crash in a callback still runs on_stop() before the exception propagates.
+    """
+    init_ros()
+    node, executor = None, SingleThreadedExecutor()
     try:
-        rclpy.spin(node)
-    except (KeyboardInterrupt, ExternalShutdownException):
+        node = cls()
+        executor.add_node(node)
+        while rclpy.ok() and not STOP.is_set():
+            executor.spin_once(timeout_sec=0.1)
+    except ExternalShutdownException:
         pass
     finally:
-        # launch can forward SIGINT again while node resources are being destroyed.
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        dbg = getattr(node, 'dbg', None)
-        if dbg is not None:
-            dbg.close()
-        node.destroy_node()
+        ignore_signals()
+        STOP.set()
+        if node is not None:
+            hook = getattr(node, 'on_stop', None)
+            if hook is not None:
+                try:
+                    hook()
+                except Exception as exc:
+                    node.get_logger().error(f'on_stop failed: {exc}')
+            dbg = getattr(node, 'dbg', None)
+            if dbg is not None:
+                dbg.close()
+            executor.shutdown()
+            node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
 
@@ -376,7 +449,7 @@ def selector_main(): run(Selector)
 def filter_main(): run(Filter)
 def alignment_main(): run(Alignment)
 def display_main():
-    rclpy.init()
+    init_ros()
     node = Display()
     executor = SingleThreadedExecutor()
     executor.add_node(node)
@@ -384,11 +457,11 @@ def display_main():
     spinner.start()
     try:
         node.loop()
-    except (KeyboardInterrupt, ExternalShutdownException):
+    except ExternalShutdownException:
         pass
     finally:
-        # launch can forward SIGINT again while node resources are being destroyed.
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        ignore_signals()
+        STOP.set()
         node.closing = True
         executor.shutdown()
         spinner.join(1.)
@@ -418,33 +491,63 @@ class Camera(Node):
         # the default raw format. Use an explicit GStreamer pipeline.
         # A pip-installed OpenCV in ~/.local may shadow the system one and lacks
         # GStreamer; fall back to V4L2 with MJPG forced (YUYV is only 9 fps at 720p).
-        is_device = isinstance(source, str) and source.startswith('/dev/video')
-        has_gst = 'GStreamer:                   YES' in cv2.getBuildInformation()
-        if is_device and has_gst:
+        self.source, self.fps = source, fps
+        self.is_device = isinstance(source, str) and source.startswith('/dev/video')
+        self.has_gst = 'GStreamer:                   YES' in cv2.getBuildInformation()
+        self.capture = self.open_capture()
+        if not self.capture.isOpened():
+            raise RuntimeError(f'Cannot open camera/video source: {source}')
+        self.pub = self.create_publisher(Image, 'camera/image_raw', qos_profile_sensor_data)
+        # capture.read() can block for ~10 s when a UVC camera stalls (V4L2 select() timeout), so it
+        # runs in its own thread: the ROS executor stays responsive and shutdown is never held up.
+        self.stopping = threading.Event()
+        self.reader = threading.Thread(target=self.read_loop, name='camera-reader', daemon=True)
+        self.reader.start()
+
+    def open_capture(self):
+        cv2, source, fps = self.cv2, self.source, self.fps
+        if self.is_device and self.has_gst:
             pipeline = (f'v4l2src device={source} ! '
                         f'image/jpeg,width={self.width},height={self.height},framerate={int(fps)}/1 ! '
                         'jpegdec ! videoconvert ! video/x-raw,format=BGR ! '
                         'appsink drop=true max-buffers=1 sync=false')
-            self.capture = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-        elif is_device:
-            self.capture = cv2.VideoCapture(source, cv2.CAP_V4L2)
-            self.capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-            self.capture.set(cv2.CAP_PROP_FPS, fps)
-        else:
-            self.capture = cv2.VideoCapture(source)
-        if not self.capture.isOpened():
-            raise RuntimeError(f'Cannot open camera/video source: {source}')
-        self.pub = self.create_publisher(Image, 'camera/image_raw', qos_profile_sensor_data)
-        self.timer = self.create_timer(1/fps, self.read)
+            return cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        if self.is_device:
+            capture = cv2.VideoCapture(source, cv2.CAP_V4L2)
+            capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+            capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+            capture.set(cv2.CAP_PROP_FPS, fps)
+            return capture
+        return cv2.VideoCapture(source)
 
-    def read(self):
-        ok, bgr = self.capture.read()
-        if not ok:
-            self.get_logger().error('Camera read failed or file ended; stopping image source')
-            self.timer.cancel()
-            return
+    def read_loop(self):
+        failures, last, period = 0, 0., 1. / self.fps
+        while not self.stopping.is_set():
+            ok, bgr = self.capture.read()
+            if self.stopping.is_set():
+                return
+            if ok:
+                failures = 0
+                # Many UVC modes run faster than the configured fps (this one: ~95 fps at 640x480);
+                # keep reading so the driver queue stays drained, but publish at fps only.
+                now = time.monotonic()
+                if now - last >= period * 0.9:
+                    last = now
+                    self.publish(bgr)
+                continue
+            if not self.is_device:
+                self.get_logger().error('Video file ended; stopping image source')
+                return
+            # A USB camera that stalls or drops off the bus: reopen it, backing off up to 2 s.
+            failures += 1
+            self.get_logger().warning(f'Camera read failed ({failures}); reopening {self.source}')
+            self.capture.release()
+            self.stopping.wait(min(0.25 * failures, 2.))
+            if not self.stopping.is_set():
+                self.capture = self.open_capture()
+
+    def publish(self, bgr):
         rgb = self.cv2.cvtColor(self.cv2.resize(bgr, (self.width, self.height)), self.cv2.COLOR_BGR2RGB)
         msg = self.image_type(height=self.height, width=self.width, encoding='rgb8', step=self.width*3,
                               data=rgb.tobytes())
@@ -452,9 +555,15 @@ class Camera(Node):
         msg.header.frame_id = self.frame_id
         self.pub.publish(msg)
 
-    def destroy_node(self):
-        self.capture.release()
-        return super().destroy_node()
+    def on_stop(self):
+        self.stopping.set()
+        self.reader.join(1.5)
+        # Releasing while read() is still blocked in the reader thread is unsafe; the OS closes the
+        # device when the process exits.
+        if not self.reader.is_alive():
+            self.capture.release()
+        else:
+            self.get_logger().warning('Camera reader still blocked in read(); leaving it to process exit')
 
 
 def camera_main(): run(Camera)

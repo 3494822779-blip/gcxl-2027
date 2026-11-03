@@ -17,6 +17,31 @@ def test_lock_bottom_edge_then_pitch_order_change_and_loss():
     assert lock.select([box(2, 80)]).track_id == 2
 
 
+def rbox(i, x, y, w, h, cls=2):
+    return SimpleNamespace(track_id=i, x=x, y=y, width=w, height=h, class_id=cls, confidence=0.9, observed=True)
+
+
+def test_lock_follows_block_to_new_tracker_id():
+    lock = Lock(rebind_iou=0.3, rebind_timeout=3.0)
+    assert lock.select([rbox(5, 100, 200, 300, 250)], 1.0).track_id == 5
+    assert lock.select([], 1.3) is None and lock.id == 5            # tracker emits nothing: keep waiting
+    seen = lock.select([rbox(6, 105, 205, 295, 245)], 1.6)          # same block, new ID: follow it
+    assert seen.track_id == 6 and lock.id == 6
+    assert lock.select([rbox(7, 600, 50, 40, 40)], 2.0) is None     # elsewhere: not the same block
+    assert lock.select([rbox(7, 105, 205, 295, 245, cls=1)], 2.0) is None   # other class: not the same block
+    assert lock.select([rbox(8, 105, 205, 295, 245)], 9.0) is None  # too long ago: no rebinding
+    assert lock.id == 6
+
+
+def test_lock_rebinding_off_or_without_time():
+    lock = Lock(rebind_iou=0.)
+    lock.select([rbox(5, 100, 200, 300, 250)], 1.0)
+    assert lock.select([rbox(6, 100, 200, 300, 250)], 1.2) is None
+    lock = Lock()
+    lock.select([rbox(5, 100, 200, 300, 250)])
+    assert lock.select([rbox(6, 100, 200, 300, 250)]) is None
+
+
 def test_filter_prediction_noise_and_ordering():
     rng = np.random.default_rng(8)
     kf = CVFilter()

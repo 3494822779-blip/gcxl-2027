@@ -6,12 +6,19 @@
 #include <gst/app/gstappsrc.h>
 #include <gstnvdsmeta.h>
 #include <nvdsmeta.h>
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <future>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <thread>
 
 #ifdef TRACKER_NODE
 constexpr bool tracking = true;
@@ -52,21 +59,26 @@ class Bridge : public rclcpp::Node {
             !std::isfinite(box.confidence) || box.confidence < 0 || box.confidence > 1 ||
             !std::isfinite(box.x) || !std::isfinite(box.y) ||
             !std::isfinite(box.width) || !std::isfinite(box.height) ||
-            box.width <= 0 || box.height <= 0 || box.x < 0 || box.y < 0 ||
-            box.x + box.width > self->width_ + 1 || box.y + box.height > self->height_ + 1) continue;
+            box.width <= 0 || box.height <= 0) continue;
+        // A block close to the camera touches or crosses the image border. Clip the box into
+        // the frame instead of dropping it, otherwise the tracker never sees the target.
+        const float left = std::max(0.f, box.x), top = std::max(0.f, box.y);
+        const float right = std::min(static_cast<float>(self->width_), box.x + box.width);
+        const float bottom = std::min(static_cast<float>(self->height_), box.y + box.height);
+        if (right - left < 2.f || bottom - top < 2.f) continue;
         auto *obj = nvds_acquire_obj_meta_from_pool(batch);
         obj->unique_component_id = 1;
         obj->class_id = box.class_id;
         obj->confidence = box.confidence;
         obj->object_id = UNTRACKED_OBJECT_ID;
-        obj->rect_params.left = box.x;
-        obj->rect_params.top = box.y;
-        obj->rect_params.width = box.width;
-        obj->rect_params.height = box.height;
-        obj->detector_bbox_info.org_bbox_coords.left = box.x;
-        obj->detector_bbox_info.org_bbox_coords.top = box.y;
-        obj->detector_bbox_info.org_bbox_coords.width = box.width;
-        obj->detector_bbox_info.org_bbox_coords.height = box.height;
+        obj->rect_params.left = left;
+        obj->rect_params.top = top;
+        obj->rect_params.width = right - left;
+        obj->rect_params.height = bottom - top;
+        obj->detector_bbox_info.org_bbox_coords.left = left;
+        obj->detector_bbox_info.org_bbox_coords.top = top;
+        obj->detector_bbox_info.org_bbox_coords.width = right - left;
+        obj->detector_bbox_info.org_bbox_coords.height = bottom - top;
         nvds_add_obj_meta_to_frame(meta, obj, nullptr);
       }
     }
@@ -251,10 +263,31 @@ class Bridge : public rclcpp::Node {
   }
 };
 
+// Tearing down a DeepStream pipeline (nvinfer / nveglglessink) can block indefinitely, e.g. when the
+// GPU or the EGL display is stuck. Destroy it on a helper thread and give up after this long, so a
+// hung pipeline cannot keep the process (and the launch) alive.
+constexpr auto kTeardownTimeout = std::chrono::seconds(3);
+
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  try { rclcpp::spin(std::make_shared<Bridge>()); }
-  catch (const std::exception &e) { RCLCPP_FATAL(rclcpp::get_logger("deepstream"), "%s", e.what()); if (rclcpp::ok()) rclcpp::shutdown(); return 1; }
+  int code = 0;
+  std::shared_ptr<Bridge> node;
+  try {
+    node = std::make_shared<Bridge>();
+    rclcpp::spin(node);
+  } catch (const std::exception &e) {
+    RCLCPP_FATAL(rclcpp::get_logger("deepstream"), "%s", e.what());
+    code = 1;
+  }
   if (rclcpp::ok()) rclcpp::shutdown();
-  return 0;
+  auto done = std::make_shared<std::promise<void>>();
+  auto finished = done->get_future();
+  std::thread([node = std::move(node), done]() mutable { node.reset(); done->set_value(); }).detach();
+  if (finished.wait_for(kTeardownTimeout) != std::future_status::ready) {
+    std::fprintf(stderr, "DeepStream pipeline did not stop within %lds; exiting anyway\n",
+                 static_cast<long>(kTeardownTimeout.count()));
+    std::fflush(stderr);
+    std::_Exit(code);
+  }
+  return code;
 }

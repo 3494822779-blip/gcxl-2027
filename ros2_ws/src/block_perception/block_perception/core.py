@@ -3,15 +3,42 @@ import math
 import numpy as np
 
 
-class Lock:
-    def __init__(self):
-        self.id = None
+def iou(a, b):
+    """Intersection over union of two boxes with x, y, width, height."""
+    w = min(a.x + a.width, b.x + b.width) - max(a.x, b.x)
+    h = min(a.y + a.height, b.y + b.height) - max(a.y, b.y)
+    if w <= 0 or h <= 0:
+        return 0.
+    inter = w * h
+    return inter / (a.width * a.height + b.width * b.height - inter)
 
-    def select(self, boxes):
+
+class Lock:
+    """Locks one tracker ID. If the tracker drops it and re-creates the same block under a new ID
+    (seen when a block touches the image border), the lock follows to the new ID: a candidate of the
+    same class overlapping the last seen box by at least rebind_iou, within rebind_timeout seconds.
+    Rebinding needs the frame time t; without it the lock only ever follows the original ID."""
+    def __init__(self, rebind_iou=0.3, rebind_timeout=3.0):
+        self.id = None
+        self.rebind_iou, self.rebind_timeout = rebind_iou, rebind_timeout
+        self.last = None
+        self.last_t = None
+
+    def select(self, boxes, t=None):
         candidates = [b for b in boxes if b.observed]
         if self.id is None and candidates:
             self.id = max(candidates, key=lambda b: (b.y + b.height, b.confidence, -b.track_id)).track_id
-        return next((b for b in candidates if b.track_id == self.id), None)
+        found = next((b for b in candidates if b.track_id == self.id), None)
+        if (found is None and t is not None and self.last is not None and self.rebind_iou > 0
+                and 0 <= t - self.last_t <= self.rebind_timeout):
+            near = [(iou(self.last, b), b) for b in candidates if b.class_id == self.last.class_id]
+            best = max(near, key=lambda c: c[0], default=None)
+            if best is not None and best[0] >= self.rebind_iou:
+                found = best[1]
+                self.id = found.track_id
+        if found is not None and t is not None:
+            self.last, self.last_t = found, t
+        return found
 
 
 class CVFilter:
@@ -60,6 +87,10 @@ def validate(values):
                  'input_timeout', 'pitch_timeout', 'max_yaw_rate', 'max_pitch_rate', 'hold_seconds']:
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
+    if 'rebind_iou' in values and not 0 <= values['rebind_iou'] <= 1:
+        raise ValueError('rebind_iou must be in [0, 1]')
+    if 'rebind_timeout' in values and values['rebind_timeout'] < 0:
+        raise ValueError('rebind_timeout must not be negative')
     for name in ['deadzone_x', 'deadzone_y']:
         if name in values and not 0 <= values[name] < 1:
             raise ValueError(f'{name} must be in [0, 1)')
@@ -69,9 +100,14 @@ def validate(values):
                  'claw_settle_sec', 'mm_per_px', 'link_length']:
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
-    for name in ['forward_speed', 'forward_max_error_x', 'claw_margin_mm', 'min_turn_speed']:
+    for name in ['forward_speed', 'forward_max_error_x', 'grasp_error_x', 'claw_margin_mm', 'min_turn_speed']:
         if name in values and values[name] < 0:
             raise ValueError(f'{name} must not be negative')
+    for name in ['yaw_near_weight', 'yaw_center_weight']:
+        if name in values and not 0 <= values[name] <= 1:
+            raise ValueError(f'{name} must be in [0, 1]')
+    if 'yaw_full_error_x' in values and not 0 < values['yaw_full_error_x'] <= 1:
+        raise ValueError('yaw_full_error_x must be in (0, 1]')
     if 'bottom_target' in values and not 0 < values['bottom_target'] <= 1:
         raise ValueError('bottom_target must be in (0, 1]')
     if 'cam_min_deg' in values and not values['cam_min_deg'] < values['cam_max_deg']:

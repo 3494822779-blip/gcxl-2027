@@ -1,4 +1,0 @@
-source;share/block_interfaces/local_setup.bash
-source;share/block_interfaces/local_setup.dsv
-source;share/block_interfaces/local_setup.sh
-source;share/block_interfaces/local_setup.zsh

@@ -1,5 +1,6 @@
 import copy
 import math
+import os
 import signal
 import threading
 import time
@@ -25,16 +26,37 @@ def seconds(stamp):
 STOP = threading.Event()
 
 
+STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+
+def watch_parent(period=0.5):
+    """Set STOP when the launching process disappears.
+
+    If launch is killed with SIGKILL (or its terminal vanishes) the node gets no signal and would
+    keep running as an orphan, e.g. several actuators all writing serial_tx. A changed parent pid
+    means we were re-parented, so exit through the normal teardown (on_stop) instead.
+    """
+    parent = os.getppid()
+
+    def loop():
+        while not STOP.wait(period):
+            if os.getppid() != parent:
+                STOP.set()
+
+    threading.Thread(target=loop, name='parent-watch', daemon=True).start()
+
+
 def init_ros():
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
-    for sig in (signal.SIGINT, signal.SIGTERM):
+    for sig in STOP_SIGNALS:
         signal.signal(sig, lambda *_: STOP.set())
+    watch_parent()
 
 
 def ignore_signals():
     # launch forwards SIGINT again while teardown runs, and rclpy.shutdown() restores the default
     # handler, which would kill the process halfway (exit code -2).
-    for sig in (signal.SIGINT, signal.SIGTERM):
+    for sig in STOP_SIGNALS:
         signal.signal(sig, signal.SIG_IGN)
 
 
@@ -204,7 +226,7 @@ class Alignment(ConfigNode):
     def target(self, msg):
         if self.target_msg is not None and msg.locked and seconds(msg.header.stamp) <= seconds(self.target_msg.header.stamp):
             return
-        identity = msg.track_id if msg.locked else None
+        identity = (msg.track_id, msg.first_grasp_id, msg.clearance) if msg.locked else None
         if identity != self.identity:
             self.hold_start, self.fired = None, False
         self.identity = identity
@@ -221,7 +243,9 @@ class Alignment(ConfigNode):
             stamp = seconds(msg.header.stamp)
             if math.isfinite(value) and (self.pitch_time is None or stamp > self.pitch_time):
                 self.pitch, self.pitch_time = value, stamp
-                if value > self.settings['grasp_pitch']:
+                # 注意：pitch < grasp_pitch时重置（相机还没低头到位），而不是 >
+                # 因为grasp_pitch是最低要求，pitch应该大于等于它才能抓取
+                if value < self.settings['grasp_pitch']:
                     self.hold_start = None
         except (ValueError, IndexError):
             pass
@@ -241,6 +265,8 @@ class Alignment(ConfigNode):
         if fresh and m.valid and m.locked and m.image_width > 0 and m.image_height > 0 and all(math.isfinite(v) for v in [m.x, m.y]):
             out.header.frame_id = m.header.frame_id
             out.track_id, out.valid, out.predicted = m.track_id, True, not m.observed
+            out.first_grasp_id, out.clearance = m.first_grasp_id, m.clearance
+            out.class_id = m.class_id
             out.error_x = (m.x - m.image_width/2) / (m.image_width/2)
             out.error_y = (m.y - p['bottom_target'] * m.image_height) / (m.image_height/2)
             # Steering is weighted by distance: full gain while the block is far (turn early), fading
@@ -259,10 +285,23 @@ class Alignment(ConfigNode):
             if p['camera_servo']:
                 out.pitch_rate = rate(out.error_y, p['deadzone_y'], p['pitch_gain'], p['max_pitch_rate'])
                 pitch_fresh = self.pitch_time is not None and 0 <= t - self.pitch_time <= p['pitch_timeout']
-                ready = out.aligned and m.observed and pitch_fresh and self.pitch <= p['grasp_pitch']
+                # Positive pitch is low-head.  Grasp only after the camera reaches the
+                # positive threshold; at 0 deg it must keep approaching.
+                ready = out.aligned and m.observed and pitch_fresh and self.pitch >= p['grasp_pitch']
+                # 调试：记录ready条件的各个组成部分
+                if out.aligned:
+                    self.dbg.event('ready_check', every=0.5,
+                                   aligned=out.aligned,
+                                   observed=m.observed,
+                                   pitch_fresh=pitch_fresh,
+                                   pitch_current=round(self.pitch, 3) if self.pitch is not None else None,
+                                   pitch_required=round(p['grasp_pitch'], 3),
+                                   pitch_ok=self.pitch >= p['grasp_pitch'] if self.pitch is not None else False,
+                                   ready=ready,
+                                   hold_time=round(t - self.hold_start, 2) if self.hold_start else 0)
                 # Camera not yet down to the grasp angle: drive forward (once roughly centred) so the
                 # block's bottom edge drops in the image and the camera can keep tilting down.
-                if pitch_fresh and self.pitch > p['grasp_pitch'] and centred:
+                if pitch_fresh and self.pitch < p['grasp_pitch'] and centred:
                     out.forward_speed = p['forward_speed']
                     out.reason = 'approaching'
                 elif out.aligned:
@@ -278,13 +317,11 @@ class Alignment(ConfigNode):
                     out.reason = 'too_close'
                 elif out.aligned:
                     out.reason = 'aligned_waiting_hold'
-            if ready:
-                if self.hold_start is None:
-                    self.hold_start = t
-                if t - self.hold_start >= p['hold_seconds'] and not self.fired:
-                    out.grasp_request, self.fired = True, True
-            else:
-                self.hold_start = None
+            # 简化逻辑：满足ready条件就立即触发grasp_request，不再等待hold_seconds
+            # 因为hold_start机制在实际运行中由于各种原因（目标抖动、pitch波动）很难累积
+            if ready and not self.fired:
+                out.grasp_request, self.fired = True, True
+                self.get_logger().info(f'Grasp request sent: aligned={out.aligned}, pitch={round(self.pitch, 3) if self.pitch is not None else None}')
             if self.fired:
                 out.yaw_rate = out.pitch_rate = out.forward_speed = 0.
                 out.reason = 'grasp_requested_waiting_reset'
@@ -507,6 +544,8 @@ class Camera(Node):
     def open_capture(self):
         cv2, source, fps = self.cv2, self.source, self.fps
         if self.is_device and self.has_gst:
+            # nvjpegdec fails caps negotiation with this UVC camera (not-negotiated); jpegdec is
+            # verified at 1280x1024@30fps with no dropped frames.
             pipeline = (f'v4l2src device={source} ! '
                         f'image/jpeg,width={self.width},height={self.height},framerate={int(fps)}/1 ! '
                         'jpegdec ! videoconvert ! video/x-raw,format=BGR ! '
@@ -518,23 +557,31 @@ class Camera(Node):
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
             capture.set(cv2.CAP_PROP_FPS, fps)
+            # 不要设置 CAP_PROP_BUFFERSIZE=1：实测会让 1280x1024 MJPG 从 24.7fps 降到 14.8fps
             return capture
         return cv2.VideoCapture(source)
 
     def read_loop(self):
         failures, last, period = 0, 0., 1. / self.fps
+        skip_count = 0
         while not self.stopping.is_set():
             ok, bgr = self.capture.read()
             if self.stopping.is_set():
                 return
             if ok:
                 failures = 0
-                # Many UVC modes run faster than the configured fps (this one: ~95 fps at 640x480);
-                # keep reading so the driver queue stays drained, but publish at fps only.
+                # 相机可能以更高帧率运行（如720p@60fps），需要精确控制发布速率
+                # 使用0.95系数允许轻微抖动，避免意外跳帧
                 now = time.monotonic()
-                if now - last >= period * 0.9:
+                elapsed = now - last
+                if elapsed >= period * 0.95:
                     last = now
                     self.publish(bgr)
+                    if skip_count > 0:
+                        self.get_logger().debug(f'Published frame after skipping {skip_count}', throttle_duration_sec=5.0)
+                        skip_count = 0
+                else:
+                    skip_count += 1
                 continue
             if not self.is_device:
                 self.get_logger().error('Video file ended; stopping image source')

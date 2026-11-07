@@ -16,3 +16,8 @@ bool aligned
 bool grasp_request
 float64 valid_for_sec
 string reason
+
+# Nonzero identifies a first-grasp task; clearance grabs must be discarded.
+uint64 first_grasp_id
+bool clearance
+int32 class_id

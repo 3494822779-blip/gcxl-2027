@@ -97,7 +97,9 @@ class Bridge : public rclcpp::Node {
         auto found = self->pending_.find(meta->buf_pts);
         if (found == self->pending_.end()) continue;
         out = std::move(found->second);
-        self->pending_.erase(found);
+        // The pipeline is in-order: any older pending frame was dropped inside it and will never
+        // arrive. Forget it, otherwise stale entries fill pending_ and push() stalls forever.
+        self->pending_.erase(self->pending_.begin(), std::next(found));
       }
       out.boxes.clear();
       for (auto *o = meta->obj_meta_list; o; o = o->next) {
@@ -150,7 +152,8 @@ class Bridge : public rclcpp::Node {
     GST_BUFFER_DURATION(buffer) = duration;
     {
       std::lock_guard<std::mutex> guard(mutex_);
-      if (pending_.size() >= 8) { gst_buffer_unref(buffer); return; }
+      // Evict the oldest entry instead of rejecting the new frame, so a lost frame cannot wedge the bridge.
+      while (pending_.size() >= 8) pending_.erase(pending_.begin());
       pending_.emplace(pts, std::move(frame));
     }
     if (gst_app_src_push_buffer(GST_APP_SRC(source_), buffer) != GST_FLOW_OK) {
@@ -211,7 +214,22 @@ class Bridge : public rclcpp::Node {
     // Separate process/pipeline per algorithm; tracker receives ROS pixels + injected boxes.
     // Jetson defaults to VIC, which cannot transform RGB input. Select GPU explicitly
     // to convert ROS rgb8 frames directly without a CPU-side RGBA intermediate.
-    std::string desc = "appsrc name=input is-live=true format=time block=false ! nvvideoconvert compute-hw=1 ! video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 nvstreammux name=mux batch-size=1 live-source=true width=" + std::to_string(width_) + " height=" + std::to_string(height_) + " batched-push-timeout=40000 ! " + (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! nvdsosd display-bbox=true display-text=true ! nvegltransform ! nveglglessink sync=false async=false";
+    // 优化DeepStream pipeline性能:
+    // - nvvideoconvert使用GPU加速(compute-hw=1)
+    // - 减少batched-push-timeout到25ms以降低延迟
+    // - nvstreammux设置buffer-pool-size=4以优化内存复用
+    // - 启用GPU内存零拷贝(nvbuf-memory-type=0)
+    std::string desc = "appsrc name=input is-live=true format=time block=false max-bytes=0 ! "
+                       "nvvideoconvert compute-hw=1 nvbuf-memory-type=0 ! "
+                       "video/x-raw(memory:NVMM),format=NV12 ! mux.sink_0 "
+                       "nvstreammux name=mux batch-size=1 live-source=true "
+                       "width=" + std::to_string(width_) + " "
+                       "height=" + std::to_string(height_) + " "
+                       "batched-push-timeout=25000 buffer-pool-size=4 "
+                       "nvbuf-memory-type=0 ! " +
+                       (tracking ? "nvtracker" : "nvinfer") + " name=algorithm ! "
+                       "nvdsosd display-bbox=true display-text=true ! "
+                       "nvegltransform ! nveglglessink sync=false async=false";
     GError *error = nullptr;
     pipeline_ = gst_parse_launch(desc.c_str(), &error);
     if (error) {

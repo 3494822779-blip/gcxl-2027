@@ -1,5 +1,7 @@
 # 参数说明
 
+动作 Goal、取消、超时和代码映射见 [项目功能与动作接口](project_actions.md)。`autonomous`（默认 true）和 `task_mode` 是 actuator 启动参数，由 launch 传入；运行中只读。显式 `grasp/approach_grasp` Goal 的 `discard_after` 覆盖普通自动丢弃设置。
+
 配置文件：`ros2_ws/src/block_perception/config/perception.yaml`。每个节点只读与自己同名的小节。
 改完 yaml 要重新构建（安装目录里是副本）：
 
@@ -20,7 +22,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
    - `camera_servo=false`：下边缘还在目标带上方（物块远），底盘前进，直到下边缘进入画面下 20% → `bottom_target`、`deadzone_y`、`forward_speed`、`forward_max_error_x`。
    - `camera_servo=true`：舵机俯仰把下边缘带进目标带 → `pitch_gain`、`max_pitch_rate`、`cam_min_deg`、`cam_max_deg`；相机没低到 `grasp_pitch` 时底盘前进。
 4. 夹爪张开：框左右边缘 → 张开角 → `mm_per_px`、`claw_margin_mm`、`link_*`、`claw_init_deg`、`claw_max_deg`。
-5. 触发抓取：水平和下边缘都在死区内、实测观测并持续 → `hold_seconds`（舵机开时还要相机低头到 `grasp_pitch`）。
+5. 触发抓取：水平和下边缘都在死区内、实测观测即触发（当前 `hold_seconds` 不参与延时）（舵机开时还要相机低头到 `grasp_pitch`）。
 6. 抓取执行：停轮，夹爪合拢 → `claw_close_deg`、`claw_settle_sec`（舵机开时相机先低头到 `grasp_pitch_deg`，夹完后回正 → `grasp_pitch_deg`、`grasp_pitch_tol`、`pitch_home`、`pitch_home_tol`）。
 
 ## selector（目标选择与锁定，在线可调）
@@ -53,7 +55,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `grasp_pitch` | −0.26 | rad | 仅舵机开。夹爪触发角（约 −15°）：前进中相机持续低头，到达此角度并稳定后触发夹爪。**须与 actuator 的 `grasp_pitch_deg` 同一角度**，且须在相机可达范围内；按实际抓取姿态标定 |
 | `pitch_timeout` | 0.25 | 秒 | 仅舵机开。俯仰反馈过期判定 |
 | `input_timeout` | 0.25 | 秒 | 目标过期判定 |
-| `hold_seconds` | 0.3 | 秒 | 水平和下边缘都在死区内、实测观测（舵机开时还要相机低头到 `grasp_pitch`）持续此时长后发一次抓取请求 |
+| `hold_seconds` | 0.3 | 秒 | 保留参数；当前代码满足 ready 条件立即发一次请求，不使用此等待时间 |
 | `pitch_joint` | camera_pitch | | 仅舵机开。`camera/joint_states` 中的关节名 |
 
 ## gripper（框边缘 → 夹爪角，在线可调）
@@ -90,9 +92,32 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `claw_close_deg` | 0.0 | 度 | 抓取时合拢到的角度（回到初始角），须在 `[claw_init_deg, claw_max_deg]` |
 | `pitch_home` | 0.0 | rad | 仅舵机开。抓取后相机回正的初始角 |
 | `pitch_home_tol` | 0.03 | rad | 仅舵机开。回正到位容差，约 1.7° |
-| `claw_settle_sec` | 0.5 | 秒 | 夹爪合拢后等待的时间，之后进入 done |
+| `claw_settle_sec` | 0.5 | 秒 | 夹爪合拢及丢弃流程每次张开后的等待时间 |
 | `pitch_timeout` | 0.25 | 秒 | 仅舵机开。俯仰反馈过期判定 |
 | `pitch_joint` | camera_pitch | | 仅舵机开。发布到 `camera/joint_states` 的关节名 |
+
+## 独立丢弃任务
+
+`block_perception/discard.py` 的 `DiscardTask` 不依赖 ROS，可在不同业务流程中创建并周期调用 `step(now)`，输出左右轮速（m/s）及夹爪角度（度），`done` 表示完成。
+顺序：逆时针 90° → 张开 90°并等待 → 后退 x → 再次张开 90°并等待 → 前进 x → 顺时针 90° → 停车，夹爪保持 90°。
+当前没有底盘里程计或航向反馈，转角按轮距/轮速计时，距离按速度计时，实车需标定；阶段之间停车，定时精度约为一个控制周期（50 ms）。
+
+在 `config/perception.yaml` 的 `actuator.ros__parameters` 设置：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `discard_enabled` | true | 仅控制抓取完成后是否自动调用；手动调用不受此开关影响 |
+| `discard_distance_m` | 0.2 | x，单位米，后退和前进使用同一距离，可为 0 |
+| `discard_speed_mps` | 0.1 | 直行速度，m/s，必须大于 0 |
+| `discard_turn_speed_mps` | 0.17 | 原地转向每轮速度，m/s，受最小转向速度和最大轮速限制 |
+
+独立触发（需要 actuator 与串口桥正在运行）：
+
+```bash
+ros2 topic pub --once /actuator/discard std_msgs/msg/Bool '{data: true}'
+```
+
+允许在视觉跟踪阶段或上一次任务完成后触发；抓取闭合中及丢弃执行中忽略重复触发。任务完成后停车，不自动恢复视觉跟踪。执行时优先使用任务指令，不受视觉指令覆盖；每次启动快照距离、速度和等待时间，中途调参下次生效。可通过 `DiscardTask.phase` 查看阶段。此入口由 actuator 统一下发串口，避免多个节点争用执行器。
 
 ## filter（卡尔曼滤波，在线可调）
 

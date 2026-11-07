@@ -87,6 +87,8 @@ def validate(values):
                  'input_timeout', 'pitch_timeout', 'max_yaw_rate', 'max_pitch_rate', 'hold_seconds']:
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
+    if 'first_grasp_overlap' in values and not 0 <= values['first_grasp_overlap'] < 1:
+        raise ValueError('first_grasp_overlap must be in [0, 1)')
     if 'rebind_iou' in values and not 0 <= values['rebind_iou'] <= 1:
         raise ValueError('rebind_iou must be in [0, 1]')
     if 'rebind_timeout' in values and values['rebind_timeout'] < 0:
@@ -97,10 +99,10 @@ def validate(values):
     if 'grasp_pitch' in values and not -math.pi / 2 < values['grasp_pitch'] < math.pi / 2:
         raise ValueError('grasp_pitch must be within (-pi/2, pi/2)')
     for name in ['track_width', 'max_wheel_speed', 'pitch_home_tol', 'grasp_pitch_tol',
-                 'claw_settle_sec', 'mm_per_px', 'link_length']:
+                 'claw_settle_sec', 'mm_per_px', 'link_length', 'discard_speed_mps', 'discard_turn_speed_mps']:
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
-    for name in ['forward_speed', 'forward_max_error_x', 'grasp_error_x', 'claw_margin_mm', 'min_turn_speed']:
+    for name in ['discard_distance_m', 'forward_speed', 'forward_max_error_x', 'grasp_error_x', 'claw_margin_mm', 'min_turn_speed']:
         if name in values and values[name] < 0:
             raise ValueError(f'{name} must not be negative')
     for name in ['yaw_near_weight', 'yaw_center_weight']:
@@ -122,3 +124,6 @@ def validate(values):
         raise ValueError('claw_max_deg must not be below claw_init_deg')
     if 'claw_close_deg' in values and not values['claw_init_deg'] <= values['claw_close_deg'] <= values['claw_max_deg']:
         raise ValueError('claw_close_deg must be within [claw_init_deg, claw_max_deg]')
+
+    if values.get('discard_enabled') and not values['claw_init_deg'] <= 90. <= values['claw_max_deg']:
+        raise ValueError('discard requires 90 degrees within claw limits')

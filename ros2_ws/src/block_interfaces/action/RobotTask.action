@@ -1,0 +1,17 @@
+# Operations: align, approach_grasp, grasp, discard, first_grasp,
+# move, turn, claw, camera, stop. SI units except explicit *_deg.
+string operation
+float64 timeout_sec  # 0 selects 60 seconds; first_grasp defaults to 180
+float64 distance_m  # signed for move; discard uses configured distance
+float64 angle_deg   # signed CCW for turn; absolute for claw/camera
+float64 speed_mps   # 0 selects configured speed; turn uses per-wheel speed
+bool discard_after  # grasp/approach_grasp only
+---
+bool success
+string message
+uint64 track_id
+---
+string phase
+float64 elapsed_sec
+uint64 track_id
+bool clearance

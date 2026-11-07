@@ -4,7 +4,7 @@ import pytest
 import rclpy
 from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, UInt64
 from block_interfaces.msg import Frame, Box, Target
 from block_perception.nodes import Selector, Filter, Alignment, Display
 
@@ -38,7 +38,7 @@ def test_chain_lock_prediction_timeout_reset(nodes):
     alignment.target(filt.pub.messages[-1])
     alignment.tick()
     assert alignment.pub.messages[-1].aligned
-    assert not alignment.pub.messages[-1].grasp_request  # hold time not reached yet
+    assert alignment.pub.messages[-1].grasp_request  # current policy fires immediately
     time.sleep(.01)
     frame.image.header.stamp = selector.get_clock().now().to_msg()
     frame.boxes = [frame.boxes[1]]
@@ -78,9 +78,7 @@ def test_grasp_one_shot_and_dynamic_parameters(nodes):
     assert alignment.set_parameters_atomically([Parameter('deadzone_x', value=.1)]).successful
     target_at(alignment, 432.)   # bottom edge on the target line (0.9 * 480)
     alignment.tick()
-    assert alignment.pub.messages[-1].aligned and not alignment.pub.messages[-1].grasp_request
-    alignment.hold_start -= .4
-    alignment.tick()
+    assert alignment.pub.messages[-1].aligned
     assert alignment.pub.messages[-1].grasp_request
     alignment.tick()
     out = alignment.pub.messages[-1]
@@ -152,19 +150,23 @@ def test_camera_servo_mode_needs_pitch_and_drives_forward_until_it_is_down(nodes
     alignment.tick()
     out = alignment.pub.messages[-1]
     assert out.pitch_rate != 0 and out.forward_speed == 0   # no pitch feedback: no forward, no grasp
-    pitch = JointState(name=['camera_pitch'], position=[-.1])   # camera not yet down to grasp_pitch (-0.26)
+    pitch = JointState(name=['camera_pitch'], position=[-.4])   # pitch below grasp_pitch (-0.26)
     pitch.header.stamp = m.header.stamp
     alignment.joints(pitch)
     alignment.tick()
     assert alignment.pub.messages[-1].forward_speed == pytest.approx(alignment.settings['forward_speed'])
+    assert alignment.pub.messages[-1].pitch_rate > 0  # target above band: visually track upward
+    alignment.set_parameters([Parameter('deadzone_y', value=.05)])
+    target_at(alignment, 470.)  # approaching makes the target drop below the band
+    alignment.tick()
+    assert alignment.pub.messages[-1].forward_speed > 0
+    assert alignment.pub.messages[-1].pitch_rate < 0  # camera follows it downward
     target_at(alignment, 432.)
-    pitch = JointState(name=['camera_pitch'], position=[-.3])
+    pitch = JointState(name=['camera_pitch'], position=[-.2])
     pitch.header.stamp = alignment.get_clock().now().to_msg()
     alignment.joints(pitch)
     alignment.tick()
-    assert not alignment.pub.messages[-1].grasp_request and alignment.pub.messages[-1].forward_speed == 0
-    alignment.hold_start -= .4
-    alignment.tick()
+    assert alignment.pub.messages[-1].forward_speed == 0
     assert alignment.pub.messages[-1].grasp_request
 
 
@@ -221,3 +223,89 @@ def test_display_exact_join(nodes):
         assert display.front == 0
     finally:
         display.destroy_node()
+
+
+def test_first_task_independent_trigger_clearance_and_completion(first_nodes):
+    from block_interfaces.msg import AlignmentCommand
+    selector, filt, alignment = first_nodes
+    assert selector.first_id == 0
+    selector.start_action(UInt64(data=selector.get_clock().now().nanoseconds))
+    task_id = selector.first_id
+    # Duplicate external goals are rejected by ActionAPI (covered in test_actions).
+    assert selector.first_id == task_id
+    frame = Frame()
+    frame.image.width, frame.image.height = 640, 480
+    frame.boxes = [Box(track_id=1, class_id=0, x=300., y=200., width=40., height=40., observed=True),
+                   Box(track_id=2, class_id=2, x=300., y=300., width=40., height=40., observed=True)]
+    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    selector.frame(frame)
+    target = selector.pub.messages[-1]
+    assert target.track_id == 2 and target.clearance and target.first_grasp_id == task_id
+    request = AlignmentCommand(first_grasp_id=task_id, track_id=2, clearance=True, grasp_request=True)
+    selector.first_command(request)
+    selector.reset(Bool(data=True))
+    assert selector.first_busy is not None
+    request.header.stamp = selector.get_clock().now().to_msg()
+    selector.first_finished(request)
+    assert selector.first_busy is None and not selector.first_done
+    frame.boxes = frame.boxes[:1]
+    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    selector.frame(frame)
+    target = selector.pub.messages[-1]
+    assert target.track_id == 1 and not target.clearance
+    request.track_id, request.clearance = 1, False
+    selector.first_command(request)
+    request.header.stamp = selector.get_clock().now().to_msg()
+    selector.first_finished(request)
+    assert selector.first_done
+    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    selector.frame(frame)
+    assert not selector.pub.messages[-1].valid
+
+
+def test_first_metadata_reaches_grasp_command_and_hazard_stops(first_nodes):
+    selector, filt, alignment = first_nodes
+    selector.start_action(UInt64(data=selector.get_clock().now().nanoseconds))
+    frame = Frame()
+    frame.image.width, frame.image.height = 640, 480
+    frame.boxes = [Box(track_id=1, class_id=0, x=300., y=392., width=40., height=40., observed=True)]
+    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    selector.frame(frame)
+    filt.target(selector.pub.messages[-1])
+    alignment.target(filt.pub.messages[-1])
+    alignment.tick()
+    cmd = alignment.pub.messages[-1]
+    assert cmd.grasp_request and cmd.first_grasp_id == selector.first_id
+    assert not cmd.clearance and cmd.class_id == 0
+    # A fresh hazard frame must not be converted to a predicted approach target.
+    frame.boxes.append(Box(track_id=2, class_id=1, x=310., y=100., width=40., height=40., observed=True))
+    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    selector.frame(frame)
+    filt.target(selector.pub.messages[-1])
+    alignment.target(filt.pub.messages[-1])
+    alignment.tick()
+    assert not alignment.pub.messages[-1].valid
+    assert alignment.pub.messages[-1].forward_speed == 0.
+
+
+@pytest.fixture
+def first_nodes():
+    from block_perception.first_grasp_task import FirstGraspTask
+    rclpy.init()
+    instances = [FirstGraspTask(), Filter(), Alignment()]
+    for n in instances:
+        n.pub = Capture()
+    yield instances
+    for n in instances:
+        n.destroy_node()
+    rclpy.shutdown()
+
+
+def test_independent_task_idle_until_trigger_and_normal_selector_has_no_task(first_nodes):
+    assert not hasattr(Selector, 'start_first')
+    task = first_nodes[0]
+    frame = Frame()
+    frame.image.header.stamp = task.get_clock().now().to_msg()
+    frame.boxes = [Box(track_id=1, class_id=0, x=100., y=100., width=40., height=40., observed=True)]
+    task.frame(frame)
+    assert not task.pub.messages[-1].valid

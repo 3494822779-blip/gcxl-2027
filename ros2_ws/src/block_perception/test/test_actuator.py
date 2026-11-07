@@ -12,6 +12,8 @@ from block_perception.actuator import Actuator, wheel_speeds, encode_command, de
 def node():
     rclpy.init()
     n = Actuator()
+    n.auto_timer.cancel()
+    n.state = 'track'
     yield n
     n.destroy_node()
     rclpy.shutdown()
@@ -56,7 +58,7 @@ def test_claws_follow_angles_but_not_below_init(node):
 
 
 def test_fixed_camera_sends_constant_angle_and_grasp_closes_claws(node):
-    node.set_parameters([Parameter('claw_close_deg', value=25.), Parameter('camera_fixed_deg', value=5.)])
+    node.set_parameters([Parameter('discard_enabled', value=False), Parameter('claw_close_deg', value=25.), Parameter('camera_fixed_deg', value=5.)])
     node.command(cmd(node, forward_speed=.15, yaw_rate=.2, pitch_rate=-.1))   # pitch_rate is ignored
     lw, rw, lg, rg, cp = node.compute(now(node) + .05)
     assert rw > lw and lg == rg == 0. and cp == 5.
@@ -68,6 +70,17 @@ def test_fixed_camera_sends_constant_angle_and_grasp_closes_claws(node):
     node.compute(now(node))
     assert node.state == 'done'
     assert node.compute(now(node)) == (0., 0., 25., 25., 5.)
+
+
+@pytest.mark.parametrize('pitch_rate', [-.2, 0., .2])
+def test_forward_preserves_visual_pitch_tracking(servo, pitch_rate):
+    servo.cam_target = 20.
+    t = now(servo)
+    servo.cam_time = t - .05
+    servo.command(cmd(servo, forward_speed=.15, pitch_rate=pitch_rate))
+    out = servo.compute(t + .01)
+    assert out[0] > 0 and out[1] > 0
+    assert out[4] == pytest.approx(20. + math.degrees(pitch_rate) * .06, abs=1e-5)
 
 
 def test_servo_track_integrates_pitch_rate_into_angle_and_clamps(servo):
@@ -95,7 +108,7 @@ def test_servo_camera_starts_from_feedback(servo):
 
 def test_servo_grasp_pitches_down_then_closes_then_homes(servo):
     node = servo
-    node.set_parameters([Parameter('claw_close_deg', value=25.)])
+    node.set_parameters([Parameter('discard_enabled', value=False), Parameter('claw_close_deg', value=25.)])
     node.command(cmd(node, grasp_request=True, forward_speed=.15, yaw_rate=.3))
     assert node.state == 'grasp'
     # Phase 1: camera commanded down to the grasp angle; claws stay open at the initial angle.
@@ -127,3 +140,86 @@ def test_serial_rx_reassembles_lines_and_sets_pitch(node):
     assert node.pitch is None
     node.serial_rx(String(data=line[6:]))
     assert node.pitch == pytest.approx(math.radians(-30.))
+
+
+def test_discard_auto_and_manual_entry(node):
+    from std_msgs.msg import Bool
+    node.command(cmd(node, grasp_request=True))
+    t = now(node)
+    node.compute(t)
+    node.compute(t + 1.)
+    assert node.state == 'discard'
+    task = node.discard_task
+    node.request_discard(Bool(data=False))
+    assert node.discard_task is task
+    node.command(cmd(node, forward_speed=.4, grasp_request=True))
+    lw, rw, *_ = node.compute(t + 1.05)
+    assert lw < 0 < rw
+    for _ in range(12):
+        t += 100.
+        node.compute(t)
+    assert node.state == 'done'
+    assert node.compute(t + 1.)[:4] == (0., 0., 90., 90.)
+    node.set_parameters([Parameter('discard_enabled', value=False)])
+    node.request_discard(Bool(data=True))
+    for _ in range(100):
+        if node.state == 'discard':
+            break
+        rclpy.spin_once(node, timeout_sec=.01)
+    assert node.state == 'discard' and node.discard_task is not task
+
+
+def test_manual_discard_during_tracking(node):
+    from std_msgs.msg import Bool
+    node.request_discard(Bool(data=False))
+    assert node.state == 'track'
+    node.request_discard(Bool(data=True))
+    for _ in range(100):
+        if node.state == 'discard':
+            break
+        rclpy.spin_once(node, timeout_sec=.01)
+    assert node.state == 'discard'
+
+
+def test_first_formal_grasp_holds_despite_auto_discard(node):
+    node.command(cmd(node, grasp_request=True, first_grasp_id=100, class_id=0))
+    t = now(node)
+    node.compute(t)
+    node.compute(t + 1.)
+    assert node.state == 'done'
+    assert node.claw == node.settings['claw_close_deg']
+
+
+def test_first_rejects_nonzero_formal_and_stale_requests(node):
+    node.command(cmd(node, grasp_request=True, first_grasp_id=100, class_id=1))
+    assert node.state == 'track'
+    node.command(cmd(node, grasp_request=True, first_grasp_id=100, predicted=True))
+    assert node.state == 'track'
+
+
+def test_clearance_forces_discard_and_rearms_without_stale_command(node):
+    assert node.set_parameters_atomically([Parameter('discard_enabled', value=False)]).successful
+    request = cmd(node, grasp_request=True, first_grasp_id=100, class_id=2, clearance=True)
+    node.command(request)
+    t = now(node)
+    node.compute(t)
+    node.compute(t + 1.)
+    assert node.state == 'discard'
+    for i in range(20):
+        node.compute(t + 2. + i * 10.)
+        if node.state == 'track':
+            break
+    assert node.state == 'track' and node.cmd is None
+    node.command(request)
+    assert node.state == 'track' and node.cmd is None
+
+
+def test_new_first_task_can_approach_after_done_but_same_task_cannot(node):
+    node.action = cmd(node, first_grasp_id=100)
+    node.state = 'done'
+    node.command(cmd(node, first_grasp_id=100, forward_speed=.1))
+    assert node.state == 'done'
+    node.command(cmd(node, first_grasp_id=101, forward_speed=.1))
+    assert node.state == 'track'
+    lw, rw, *_ = node.compute(now(node))
+    assert lw > 0 and rw > 0

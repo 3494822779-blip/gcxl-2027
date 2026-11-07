@@ -1,6 +1,10 @@
-# ROS 2 物块对准抓取视觉感知
+# 普通抓取任务
 
-代码直接位于当前 DeepStream-Yolo 工程内，支持 ROS 2 Humble + DeepStream 7.1（Jetson）。只输出视觉对准信息和抓取请求，不控制电机。已接入 `models/yolov8n_gcxl_aug/best.pt` 导出的四类 YOLOv8n 模型，类别顺序为 `class_0`、`class_1`、`class_2`、`class_3`；实际物块名称仍需对应训练数据确认。
+完整逻辑、代码映射和 Action 用法见 **[项目功能与动作接口](../docs/project_actions.md)**。默认启动自动提交一次抓取 Action；`autonomous:=false` 等待外部 Goal。完成、取消或超时后停车保持，继续执行需提交新 Goal。
+
+ROS 2 物块对准抓取视觉感知
+
+代码直接位于当前 DeepStream-Yolo 工程内，支持 ROS 2 Humble + DeepStream 7.1（Jetson）。通过 actuator 和可选串口桥控制底盘、夹爪和相机俯仰。已接入 `models/yolov8n_gcxl_aug/best.pt` 导出的四类 YOLOv8n 模型，类别顺序为 `class_0`、`class_1`、`class_2`、`class_3`；实际物块名称仍需对应训练数据确认。
 
 ## 节点与接口
 
@@ -31,7 +35,7 @@ serial_tx [std_msgs/String] → serial_node（可选串口桥）→ serial_rx [s
 - 相机俯仰舵机开关 `camera_servo`（alignment 与 actuator 两节必须一致）：
   - `false`（相机固定，当前默认）：`pitch_rate=0`，不需要 pitch 反馈。下边缘在目标带（默认画面下 20%）上方时底盘按 `forward_speed` 前进（水平偏差不超过 `forward_max_error_x`），在带下方只停车，不倒车。
   - `true`：订阅真实反馈 `JointState`，取 `camera_pitch` 的 position（rad）。相机没低到 `grasp_pitch` 时底盘前进，舵机把下边缘带进目标带。`grasp_pitch` 只代表标定后的抓取姿态，不是通用测距公式；相机高度、物块高度、安装角或地面条件变化后应重新标定。
-- 抓取：水平和下边缘都在死区、目标是真实观测（`camera_servo=true` 时还要 pitch 反馈未过期且已低到 `grasp_pitch`），持续 `hold_seconds` 后，`grasp_request` **只发出一次**。预测框不触发抓取。之后该锁定周期运动输出保持零，actuator 合拢夹爪并保持，等待外部发布 reset。执行方需要订阅 reliable 指令、按 ID 去重；一次请求不是具备确认重试的动作协议。
+- 抓取：水平和下边缘都在死区、目标是真实观测（`camera_servo=true` 时还要 pitch 反馈未过期且已低到 `grasp_pitch`），当前实现满足条件立即触发（`hold_seconds` 暂不参与延时），`grasp_request` **只发出一次**。预测框不触发抓取。之后该锁定周期运动输出保持零，actuator 合拢夹爪并保持，等待下一个 Action Goal。该话题作为 Action 内部决策输入；对外任务使用 `/robot/execute` 提供完成、取消和超时反馈。
 - 指令：20 Hz 发布，`valid=false` 时两轴为零；消费者必须检查 `header.stamp` 和 `valid_for_sec`，订阅中断后自行停止。目标、pitch 与指令时间必须来自同一 ROS 时钟。相机标定角度和执行方向并未在此工程中虚构。
 
 ## 编译与运行
@@ -164,3 +168,68 @@ BLOCK_TEST_DEEPSTREAM=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pyt
 `angles_ready=true` 且消息采集时间未超过 `valid_for_sec`；对准抓取请求仍来自
 `/alignment/command`。输入中断后节点发布过期状态，`input_timeout` 默认 0.25 秒，支持在线修改。
 可用 `ros2 topic echo /gripper/angles` 查看边界/就绪状态，录包命令加上 `/gripper/angles` 即可保存输出。
+
+## 独立任务：首次抓取 class_0
+
+首次抓取是独立的 `first_grasp` ROS 节点，任务状态、目标筛选与清障循环均位于
+`block_perception/first_grasp_task.py`。普通 `selector` 不包含此任务逻辑。
+
+独立启动任务及其依赖节点（替代普通 perception.launch.py；两套入口不要同时运行）：
+
+```bash
+ros2 launch block_perception first_grasp.launch.py camera:=true serial:=true
+```
+
+相机、串口等参数沿用普通 launch；按实际输入设置。启动后任务处于等待状态，不自动抓取。
+单独触发：
+
+```bash
+ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: first_grasp}" --feedback
+```
+
+执行中重复触发被忽略。选择 class_0 框左右边缘之间、从上边缘延伸至画面顶部的区域，
+要求该区域与 class_1 框的交集面积占该 class_1 框面积的比例不超过
+`first_grasp.first_grasp_overlap`（默认 0，即不相交；可调为小正数允许少量重叠）。
+上边缘已出画的 class_0 不作为候选。优先选择无遮挡的合格 class_0。
+
+前方遮挡暂按横向相交且框下边缘更低判断；有遮挡时抓取最近的遮挡物并复用丢弃任务，
+丢弃结束后只使用新图像重新选目标，允许多次清障。清障抓取不计入首次正式抓取。
+无合格目标时停车等待；最终只以 class_0 作为正式目标，合拢后保持夹持并结束任务，
+不受普通抓取 `discard_enabled` 自动丢弃设置影响。清障则始终丢弃。
+`/task/grasp_finished` 发布各次动作完成信息（AlignmentCommand，含任务 ID 和 clearance）。
+完成是上位机动作计时结束，不代表传感器确认物块已夹住。
+
+该规则使用图像框近似前后关系，无法凭检测框保证真实夹爪范围内没有其他物块；
+需实车验证遮挡判断、检测漏检和抓取范围。重新编译 block_interfaces、block_perception 并
+重新 source 安装环境后使用新增话题及消息字段。普通 target/reset 不控制独立首次抓取任务。
+
+## 丢弃任务的底盘参数与标定
+
+独立丢弃任务执行：逆时针转 90° → 夹爪开到 90° → 后退 x → 夹爪再次开到 90° → 前进 x → 顺时针转 90° → 停车。
+参数位于 [`config/perception.yaml`](src/block_perception/config/perception.yaml) 的 `actuator.ros__parameters`：
+
+| 参数 | 单位 | 用途 |
+|---|---|---|
+| `track_width` | m | 左右驱动轮间距，用于计算原地转 90° 所需时间，须测量实车 |
+| `wheel_speed_scale` | 下位机指令值 / (m/s) | 下发轮速值 = 轮速（m/s）× 此系数，须匹配下位机接口 |
+| `max_wheel_speed` | m/s | 每侧轮速上限 |
+| `min_turn_speed` | m/s | 最小转向轮速，须标定到能可靠转动 |
+| `discard_distance_m` | m | x，后退和返回前进使用同一距离 |
+| `discard_speed_mps` | m/s | 丢弃任务的后退、前进速度，受最大轮速限制 |
+| `discard_turn_speed_mps` | m/s | 原地旋转的每侧轮速，受最小转向轮速及最大轮速限制 |
+| `claw_settle_sec` | s | 合拢及每次开爪后的等待时间 |
+| `discard_enabled` | 布尔值 | 普通抓取完成后是否自动调用丢弃任务；不影响独立触发 |
+
+方向约定：`lw` 对应左轮，`rw` 对应右轮；两轮正值均表示前进。从车顶向下看，左轮负、右轮正为逆时针，左轮正、右轮负为顺时针。实车运行前需确认轮子映射和正负方向。
+
+若下位机接收实际轮速，轮径、减速比和编码器参数由下位机处理；若接收的是 PWM，则必须实测“指令值与实际速度”的关系来标定 `wheel_speed_scale`。PWM 与速度通常并非固定比例，负载、电池电压及地面变化会影响结果。
+
+当前底盘没有向任务提供里程计或航向反馈，使用开环计时：直行时间为 `x / 实际下发速度`；原地转 90° 的时间为 `π × track_width / (4 × 每侧实际下发轮速)`。这里的速度是限幅后的指令速度，并非反馈测得的真实速度。先校准直行距离，再验证两个方向的 90° 转角；轮胎打滑及控制周期也会造成误差。若需要准确返回原位置和朝向，应增加编码器距离与 IMU 航向反馈，并将任务改为闭环到位判定。
+
+执行节点及串口桥运行时，可独立触发：
+
+```bash
+ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: discard}" --feedback
+```
+
+详细参数与任务复用接口见 [`docs/parameters.md`](../docs/parameters.md)。

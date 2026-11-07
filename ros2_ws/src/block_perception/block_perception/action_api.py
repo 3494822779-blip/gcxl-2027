@@ -101,18 +101,21 @@ class ActionAPI:
         self.hold()
         n.action = None
         n.close_time = None
+        if g.operation == 'first_grasp':
+            self.first_id = max(1, self.last_first_id + 1, n.get_clock().now().nanoseconds)
+            self.last_first_id = self.first_id
+        n.memory.begin_task(g.operation, self.first_id)
+        n.publish_memory()
         try:
             self.validate(g)
             if g.operation in ('align', 'approach_grasp', 'first_grasp'):
                 n.state = 'track'
                 if g.operation == 'first_grasp':
-                    self.first_id = max(1, self.last_first_id + 1, n.get_clock().now().nanoseconds)
-                    self.last_first_id = self.first_id
                     self.first_start.publish(UInt64(data=self.first_id))
                 else:
                     self.reset.publish(Bool(data=True))
             elif g.operation == 'grasp':
-                n.state = 'grasp'
+                n.begin_grasp()
             elif g.operation == 'discard':
                 n.start_discard()
             elif g.operation in ('move', 'turn'):
@@ -124,6 +127,8 @@ class ActionAPI:
                 self.duration = (abs(g.distance_m) / self.speed if g.operation == 'move' else
                                  abs(math.radians(g.angle_deg)) * n.settings['track_width'] / (2 * self.speed))
             elif g.operation == 'claw':
+                if (n.left_claw, n.right_claw) != (g.angle_deg, g.angle_deg):
+                    n.memory.uncertain_hold('manual_claw_command')
                 n.claw = g.angle_deg
             elif g.operation == 'camera':
                 n.cam_target = g.angle_deg
@@ -140,11 +145,15 @@ class ActionAPI:
         n.cmd = n.grip = None
         n.resume_after = n.get_clock().now().nanoseconds * 1e-9
 
-    def finish(self, success, message, canceled=False):
+    def finish(self, success, message, canceled=False, status=None):
         if self.future is None or self.future.done():
             return
         n = self.node
         track = n.action.track_id if n.action is not None else (n.cmd.track_id if n.cmd else 0)
+        phase = self.current_phase()
+        n.memory.finish_task(status or ('completed' if success else 'canceled' if canceled else 'aborted'),
+                             phase, message)
+        n.publish_memory()
         self.hold()
         if success and n.settings['camera_servo'] and self.goal.operation in ('grasp', 'approach_grasp', 'first_grasp', 'discard'):
             n.cam_target = math.degrees(n.settings['pitch_home'])
@@ -158,6 +167,18 @@ class ActionAPI:
             self.handle.abort()
         self.future.set_result(RobotTask.Result(success=success, message=message, track_id=track))
 
+    def current_phase(self):
+        n = self.node
+        if n.state == 'discard':
+            return n.discard_task.phase
+        if n.state == 'grasp':
+            return 'claw_close' if n.close_time is not None else 'grasp_pitch'
+        if n.state == 'track':
+            return (n.cmd.reason if n.cmd is not None else '') or 'waiting_for_target'
+        if n.state == 'hold' and self.goal is not None:
+            return self.goal.operation
+        return n.state
+
     def before_tick(self):
         """Returns an optional direct wheel command in m/s; other phases use compute()."""
         if self.handle is None or self.future.done():
@@ -168,15 +189,10 @@ class ActionAPI:
             self.finish(False, 'canceled; wheels stopped, servo targets held', canceled=True)
             return None
         if elapsed >= self.timeout:
-            self.finish(False, 'timeout; wheels stopped, servo targets held')
+            self.finish(False, 'timeout; wheels stopped, servo targets held', status='timeout')
             return None
-        phase = n.discard_task.phase if n.state == 'discard' else n.state
-        if n.state == 'hold':
-            phase = g.operation
-        elif n.state == 'grasp':
-            phase = 'claw_close' if n.close_time is not None else 'grasp_pitch'
-        elif n.state == 'track':
-            phase = n.cmd.reason if n.cmd is not None else 'waiting_for_target'
+        phase = self.current_phase()
+        n.memory.phase(phase)
         source = n.cmd if n.state == 'track' else n.action
         self.handle.publish_feedback(RobotTask.Feedback(
             phase=phase, elapsed_sec=elapsed,

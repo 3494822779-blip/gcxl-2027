@@ -1,0 +1,9 @@
+[console_scripts]
+actuator = block_perception.actuator:main
+alignment = block_perception.nodes:alignment_main
+camera = block_perception.nodes:camera_main
+display = block_perception.nodes:display_main
+filter = block_perception.nodes:filter_main
+first_grasp = block_perception.first_grasp_task:main
+gripper = block_perception.gripper:main
+selector = block_perception.nodes:selector_main

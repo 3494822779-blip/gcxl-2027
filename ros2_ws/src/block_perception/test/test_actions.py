@@ -223,3 +223,91 @@ def test_timeout_still_stops_when_ros_simulation_clock_is_paused(rig):
     assert n.get_clock().now().nanoseconds == 0
     h = goal(rig, 'approach_grasp', timeout_sec=.1)
     assert 'timeout' in result(rig, h, GoalStatus.STATUS_ABORTED).message
+
+
+def test_memory_query_latched_context_and_independent_claw_cancel(rig):
+    import json
+    from std_srvs.srv import Trigger
+    from rclpy.qos import QoSProfile, DurabilityPolicy
+    n = rig[0]
+    n.set_parameters([Parameter('right_claw_close_deg', value=16.)])
+    h = goal(rig, 'grasp')
+    assert result(rig, h).success
+    assert (n.left_claw, n.right_claw) == (0., 16.)
+    query = n.create_client(Trigger, 'robot/memory/get')
+    assert query.wait_for_service(timeout_sec=1.)
+    answer = query.call_async(Trigger.Request())
+    until(rig, answer.done)
+    snapshot = json.loads(answer.result().message)
+    assert snapshot['history']['grasps'][-1]['class_id'] is None
+    assert snapshot['context']['held']['state'] == 'commanded_hold'
+    # Late subscribers receive the current decision context without waiting for a new task.
+    updates = []
+    sub = n.create_subscription(String, 'robot/memory', lambda msg: updates.append(json.loads(msg.data)),
+                                QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+    until(rig, lambda: bool(updates))
+    assert updates[-1]['task']['status'] == 'completed'
+    h = goal(rig, 'discard')
+    cancel = h.cancel_goal_async()
+    until(rig, cancel.done)
+    result(rig, h, GoalStatus.STATUS_CANCELED)
+    assert (n.left_claw, n.right_claw) == (0., 16.)
+    assert n.memory.data['grasps'][-1]['status'] == 'completed'
+    assert n.memory.data['grasps'][-1]['disposition'] == 'discard_interrupted'
+    assert n.memory.decision_context()['task']['status'] == 'canceled'
+    n.destroy_subscription(sub)
+    n.destroy_client(query)
+
+
+def test_claw_action_does_not_change_long_term_closure_settings(rig):
+    n = rig[0]
+    n.set_parameters([Parameter('right_claw_close_deg', value=18.)])
+    assert result(rig, goal(rig, 'claw', angle_deg=80.)).success
+    assert n.settings['right_claw_close_deg'] == 18.
+    assert result(rig, goal(rig, 'grasp')).success
+    assert (n.left_claw, n.right_claw) == (0., 18.)
+
+
+def test_first_selector_uses_memory_as_well_as_current_images(rig):
+    import json
+    from block_interfaces.msg import Frame, Box
+    from std_msgs.msg import UInt64
+    n = rig[0]
+    first = FirstGraspTask()
+    try:
+        first.start_action(UInt64(data=123))
+        n.memory.begin_task('first_grasp', 123)
+        n.memory.begin_grasp(AlignmentCommand(first_grasp_id=123, class_id=0, track_id=3))
+        n.memory.complete_grasp()
+        first.remember(String(data=json.dumps(n.memory.decision_context())))
+        assert not first.memory_allows_selection()  # formal grasp completed; no duplicate selection
+        outputs = []
+        class Capture:
+            def publish(self, msg):
+                outputs.append(msg)
+        first.pub = Capture()
+        frame = Frame()
+        frame.image.width, frame.image.height = 640, 480
+        frame.boxes = [Box(track_id=3, class_id=0, x=300., y=200., width=40., height=40., observed=True)]
+        frame.image.header.stamp = first.get_clock().now().to_msg()
+        first.frame(frame)
+        assert not outputs[-1].valid  # visible target alone must not repeat a completed task
+        first.start_action(UInt64(data=124))
+        assert first.memory_allows_selection()  # old task cannot mark a new task completed
+        n.memory.begin_task('first_grasp', 124)
+        n.memory.begin_grasp(AlignmentCommand(first_grasp_id=124, class_id=2, track_id=4, clearance=True))
+        n.memory.complete_grasp()
+        n.memory.begin_discard()
+        first.remember(String(data=json.dumps(n.memory.decision_context())))
+        assert not first.memory_allows_selection()  # wait until the obstacle disposal finishes
+        n.memory.complete_discard()
+        first.remember(String(data=json.dumps(n.memory.decision_context())))
+        assert first.memory_allows_selection()  # clearance is not the formal grasp
+        frame.image.header.stamp = first.get_clock().now().to_msg()
+        first.frame(frame)
+        assert outputs[-1].valid and outputs[-1].class_id == 0
+        n.memory.finish_task('timeout', 'track')
+        first.remember(String(data=json.dumps(n.memory.decision_context())))
+        assert not first.memory_allows_selection()
+    finally:
+        first.destroy_node()

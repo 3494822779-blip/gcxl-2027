@@ -3,10 +3,11 @@
 Start via /robot/execute first_grasp; task/first_grasp is a compatibility client. Never run alongside the normal selector
 on the same target/raw topic. Low-level alignment and actuation are shared.
 """
+import json
 from rclpy.action import ActionClient
 from block_interfaces.action import RobotTask
-from rclpy.qos import qos_profile_sensor_data
-from std_msgs.msg import Bool, UInt64
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, DurabilityPolicy
+from std_msgs.msg import Bool, UInt64, String
 from block_interfaces.msg import Frame, Target, AlignmentCommand
 from .nodes import ConfigNode, run, seconds
 from .core import Lock
@@ -23,6 +24,9 @@ class FirstGraspTask(ConfigNode):
         self.first_busy = None
         self.first_done = False
         self.clearance = False
+        self.memory_context = None
+        self.create_subscription(String, 'robot/memory', self.remember,
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.pub = self.create_publisher(Target, 'target/raw', 10)
         self.create_subscription(Frame, 'tracks', self.frame, qos_profile_sensor_data)
         self.action_client = ActionClient(self, RobotTask, 'robot/execute')
@@ -31,6 +35,32 @@ class FirstGraspTask(ConfigNode):
         self.create_subscription(Bool, 'task/first_grasp', self.start_first, 10)
         self.create_subscription(AlignmentCommand, 'alignment/command', self.first_command, 10)
         self.create_subscription(AlignmentCommand, 'task/grasp_finished', self.first_finished, 10)
+
+    def remember(self, msg):
+        try:
+            context = json.loads(msg.data)
+            if not isinstance(context, dict) or context.get('version') != 1:
+                return
+            self.memory_context = context
+        except (ValueError, TypeError):
+            return
+
+    def memory_allows_selection(self):
+        """Combine current images with this task's actual execution progress.
+
+        History is not a map of object positions and never blacklists tracker IDs.
+        """
+        context = self.memory_context or {}
+        task = context.get('task')
+        if not isinstance(task, dict) or task.get('first_grasp_id') != self.first_id:
+            return True  # A different task's history cannot complete this task.
+        if task.get('status') != 'running' or task.get('first_formal_completed'):
+            return False
+        for name in ('latest_grasp', 'latest_discard'):
+            record = context.get(name)
+            if isinstance(record, dict) and record.get('task_id') == task.get('id') and record.get('status') == 'running':
+                return False
+        return True
 
     def start_action(self, msg):
         if not msg.data:
@@ -85,7 +115,8 @@ class FirstGraspTask(ConfigNode):
             return
         self.last_stamp = stamp
         prev_id = self.lock.id
-        if not self.first_id or self.first_busy is not None or self.first_done:
+        if (not self.first_id or self.first_busy is not None or self.first_done
+                or not self.memory_allows_selection()):
             self.pub.publish(Target(header=msg.image.header))
             return
         choices = first_candidates(msg.boxes, self.settings['first_grasp_overlap'])

@@ -2,12 +2,14 @@
 
 step(now_seconds) returns left/right wheel speeds (m/s) and claw angle (degrees).
 Call periodically until done. Configuration is snapshotted at construction.
+When entry angles differ, right_claw holds the independent right target; step()
+retains its original three-value API with the left angle in the last position.
 """
 import math
 
 
 class DiscardTask:
-    def __init__(self, settings, claw):
+    def __init__(self, settings, claw, right_claw=None):
         p = settings
         for key in ('discard_speed_mps', 'discard_turn_speed_mps', 'max_wheel_speed',
                     'track_width', 'claw_settle_sec'):
@@ -33,6 +35,7 @@ class DiscardTask:
         self.index = 0
         self.started = None
         self.claw = claw
+        self.right_claw = claw if right_claw is None else right_claw
 
     @property
     def done(self):
@@ -54,4 +57,6 @@ class DiscardTask:
         if self.started is None:
             self.started = now
         self.claw = claw
+        if self.index > 0:  # The first turn must preserve both entry angles.
+            self.right_claw = claw
         return (lw, rw, claw) if duration > 0 else (0., 0., claw)

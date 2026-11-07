@@ -6,17 +6,20 @@ Wire format is specified in docs/serial_protocol.md (keep both in sync).
 With camera_servo off (fixed camera) cp is the constant camera_fixed_deg and $FB is not needed.
 """
 import copy
+import json
 import math
 import time
 from rclpy.clock import Clock, ClockType
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, DurabilityPolicy
 from rcl_interfaces.msg import ParameterDescriptor
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool, String
+from std_srvs.srv import Trigger
 from block_interfaces.msg import AlignmentCommand, GripperAngles
 from .nodes import ConfigNode, run, seconds
 from .discard import DiscardTask
 from .action_api import ActionAPI
+from .task_memory import TaskMemory
 
 
 def checksum(body):
@@ -72,7 +75,8 @@ class Actuator(ConfigNode):
                             track_width=0.2, wheel_speed_scale=1000., max_wheel_speed=0.5, min_turn_speed=0.1,
                             cam_min_deg=-15., cam_max_deg=30.,
                             grasp_pitch_deg=-15., grasp_pitch_tol=0.03,
-                            claw_init_deg=0., claw_max_deg=90., claw_close_deg=0.,
+                            claw_init_deg=0., claw_max_deg=90.,
+                            left_claw_close_deg=0., right_claw_close_deg=0.,
                             pitch_home=0.0, pitch_home_tol=0.03,
                             discard_enabled=True, discard_distance_m=0.2,
                             discard_speed_mps=0.1, discard_turn_speed_mps=0.17,
@@ -102,12 +106,45 @@ class Actuator(ConfigNode):
         self.create_subscription(AlignmentCommand, 'alignment/command', self.command, 10)
         self.create_subscription(GripperAngles, 'gripper/angles', self.angles, 10)
         self.create_subscription(JointState, 'camera/joint_states', self.joints, qos_profile_sensor_data)
+        self.memory = TaskMemory()
+        self.memory_pub = self.create_publisher(String, 'robot/memory',
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+        self.memory_service = self.create_service(Trigger, 'robot/memory/get', self.get_memory)
+        self.memory_revision = -1
+        self.publish_memory()
         self.action_api = ActionAPI(self)
         self.control_clock = Clock(clock_type=ClockType.STEADY_TIME)
         self.create_timer(0.05, self.tick, clock=self.control_clock)
         self.auto_timer = None
         if self.get_parameter('autonomous').value and self.task_mode == 'normal':
             self.auto_timer = self.create_timer(0.1, self.start_autonomous, clock=self.control_clock)
+
+    @property
+    def claw(self):
+        """Legacy common-angle accessor; grasp and hold use the independent targets."""
+        return self.left_claw
+
+    @claw.setter
+    def claw(self, angle):
+        self.left_claw = self.right_claw = angle
+
+    def publish_memory(self):
+        if self.memory_revision != self.memory.revision:
+            self.memory_pub.publish(String(data=json.dumps(self.memory.decision_context(), ensure_ascii=False)))
+            self.memory_revision = self.memory.revision
+
+    def get_memory(self, request, response):
+        response.success = True
+        response.message = json.dumps(self.memory.snapshot(), ensure_ascii=False)
+        return response
+
+    def begin_grasp(self, target=None):
+        self.action = copy.deepcopy(target)
+        self.grasp_close = (self.settings['left_claw_close_deg'], self.settings['right_claw_close_deg'])
+        self.state, self.close_time = 'grasp', None
+        self.memory.begin_grasp(target, *self.grasp_close)
+        self.publish_memory()
+        self.dbg.event('state', state='grasp')
 
     def start_autonomous(self):
         self.auto_timer.cancel()
@@ -150,9 +187,7 @@ class Actuator(ConfigNode):
                                    claw_init=self.settings['claw_init_deg'],
                                    claw_max=self.settings['claw_max_deg'])
                     return
-            self.action = copy.deepcopy(msg)
-            self.state, self.close_time = 'grasp', None
-            self.dbg.event('state', state='grasp')
+            self.begin_grasp(msg)
         elif msg.grasp_request and not available:
             self.dbg.event('grasp_rejected', reason='state_not_track', state=self.state)
 
@@ -209,7 +244,8 @@ class Actuator(ConfigNode):
             self.action_api.submit('discard')
 
     def start_discard(self):
-        self.discard_task = DiscardTask(self.settings, self.claw)
+        self.discard_task = DiscardTask(self.settings, self.left_claw, self.right_claw)
+        self.memory.begin_discard()
         self.state = 'discard'
         self.dbg.event('state', state='discard')
 
@@ -242,7 +278,8 @@ class Actuator(ConfigNode):
             if self.fresh(g, now) and g.angles_ready:
                 target = max(p['claw_init_deg'], min(p['claw_max_deg'], math.degrees(g.left_angle_rad)))
                 # Box width jitters by a few px every frame; ignore sub-deadband changes so the claw servo holds still.
-                if abs(target - self.claw) > p['claw_deadband_deg']:
+                if max(abs(target - self.left_claw), abs(target - self.right_claw)) > p['claw_deadband_deg']:
+                    self.memory.uncertain_hold('visual_gripper_adjustment')
                     self.claw = target
         elif self.state == 'grasp':
             # Wheels stopped. With a camera servo: phase 1 pitches the camera down at the block (claws
@@ -252,10 +289,14 @@ class Actuator(ConfigNode):
                 self.cam_target = p['grasp_pitch_deg']
                 reached = pitch_fresh and abs(math.radians(p['grasp_pitch_deg']) - self.pitch) <= p['grasp_pitch_tol']
             if reached:
-                self.claw = max(p['claw_init_deg'], p['claw_close_deg'])
+                self.left_claw, self.right_claw = self.grasp_close
+                self.memory.phase('claw_close')
                 if self.close_time is None:
                     self.close_time = now
                 if now - self.close_time >= p['claw_settle_sec']:
+                    if servo:
+                        self.cam_target = math.degrees(p['pitch_home'])
+                    self.memory.complete_grasp()
                     discard = (self.action.clearance if self.action is not None and
                                self.action.first_grasp_id else p['discard_enabled'])
                     goal = self.action_api.goal
@@ -272,8 +313,11 @@ class Actuator(ConfigNode):
         elif self.state == 'discard':
             if servo:
                 self.cam_target = math.degrees(p['pitch_home'])
-            lw, rw, self.claw = self.discard_task.step(now)
+            self.memory.phase(self.discard_task.phase)
+            lw, rw, self.left_claw = self.discard_task.step(now)
+            self.right_claw = self.discard_task.right_claw
             if self.discard_task.done:
+                self.memory.complete_discard()
                 self.state = 'done'
                 self.dbg.event('state', state='done')
                 self.finish_first(now)
@@ -281,7 +325,7 @@ class Actuator(ConfigNode):
             # Grasp finished; command the camera back to its initial (home) pitch.
             self.cam_target = math.degrees(p['pitch_home'])
         self.cam_target = max(p['cam_min_deg'], min(p['cam_max_deg'], self.cam_target))
-        return lw * p['wheel_speed_scale'], rw * p['wheel_speed_scale'], self.claw, self.claw, self.cam_target
+        return lw * p['wheel_speed_scale'], rw * p['wheel_speed_scale'], self.left_claw, self.right_claw, self.cam_target
 
     def tick(self):
         wheels = self.action_api.before_tick()
@@ -292,6 +336,7 @@ class Actuator(ConfigNode):
         self.pub.publish(String(data=frame))
         self.dbg.event('tx_command', every=0.5, state=self.state, frame=frame, pitch=self.pitch)
         self.seq = (self.seq + 1) % 65536
+        self.publish_memory()
 
     def on_stop(self, repeats=5, period=0.02):
         """Graceful exit: stop the wheels now instead of waiting for the MCU's 250 ms timeout.
@@ -304,7 +349,7 @@ class Actuator(ConfigNode):
             self.action_api.finish(False, 'actuator shutting down')
         cam = self.cam_target if self.cam_target is not None else self.settings['camera_fixed_deg']
         for _ in range(repeats):
-            self.pub.publish(String(data=encode_command(self.seq, 0., 0., self.claw, self.claw, cam)))
+            self.pub.publish(String(data=encode_command(self.seq, 0., 0., self.left_claw, self.right_claw, cam)))
             self.seq = (self.seq + 1) % 65536
             time.sleep(period)
 

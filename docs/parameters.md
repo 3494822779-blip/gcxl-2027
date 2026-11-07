@@ -23,7 +23,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
    - `camera_servo=true`：舵机俯仰把下边缘带进目标带 → `pitch_gain`、`max_pitch_rate`、`cam_min_deg`、`cam_max_deg`；相机没低到 `grasp_pitch` 时底盘前进。
 4. 夹爪张开：框左右边缘 → 张开角 → `mm_per_px`、`claw_margin_mm`、`link_*`、`claw_init_deg`、`claw_max_deg`。
 5. 触发抓取：水平和下边缘都在死区内、实测观测即触发（当前 `hold_seconds` 不参与延时）（舵机开时还要相机低头到 `grasp_pitch`）。
-6. 抓取执行：停轮，夹爪合拢 → `claw_close_deg`、`claw_settle_sec`（舵机开时相机先低头到 `grasp_pitch_deg`，夹完后回正 → `grasp_pitch_deg`、`grasp_pitch_tol`、`pitch_home`、`pitch_home_tol`）。
+6. 抓取执行：停轮，夹爪合拢 → `left_claw_close_deg`、`right_claw_close_deg`、`claw_settle_sec`（舵机开时相机先低头到 `grasp_pitch_deg`，夹完后回正 → `grasp_pitch_deg`、`grasp_pitch_tol`、`pitch_home`、`pitch_home_tol`）。
 
 ## selector（目标选择与锁定，在线可调）
 
@@ -89,7 +89,8 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `grasp_pitch_deg` | −15.0 | 度 | 仅舵机开。抓取时相机先低头到的目标角（0=回正，负=低头），**到位后夹爪才合拢**。须在 `[cam_min_deg, cam_max_deg]` 内，须与 alignment 的 `grasp_pitch` 同一角度（deg = rad×180/π） |
 | `grasp_pitch_tol` | 0.03 | rad | 仅舵机开。相机到达 `grasp_pitch_deg` 的到位容差，约 1.7° |
 | `claw_init_deg` / `claw_max_deg` | 0.0 / 90.0 | 度 | 同 gripper |
-| `claw_close_deg` | 0.0 | 度 | 抓取时合拢到的角度（回到初始角），须在 `[claw_init_deg, claw_max_deg]` |
+| `left_claw_close_deg` | 0.0 | 度 | 左夹爪抓取闭合角，长期配置，须在 `[claw_init_deg, claw_max_deg]` |
+| `right_claw_close_deg` | 0.0 | 度 | 右夹爪抓取闭合角，暂定 0°，可单独调整；范围同左侧 |
 | `pitch_home` | 0.0 | rad | 仅舵机开。抓取后相机回正的初始角 |
 | `pitch_home_tol` | 0.03 | rad | 仅舵机开。回正到位容差，约 1.7° |
 | `claw_settle_sec` | 0.5 | 秒 | 夹爪合拢及丢弃流程每次张开后的等待时间 |
@@ -160,3 +161,28 @@ ros2 topic pub --once /actuator/discard std_msgs/msg/Bool '{data: true}'
 4. `track_width`：量两轮间距。
 5. `claw_init_deg`、`claw_max_deg`：按机械极限，并与下位机固件一致（舵机开时还有 `cam_min_deg`、`cam_max_deg`、`grasp_pitch` / `grasp_pitch_deg`）。
 6. `serial_node.port`：按实际设备名。
+
+## 左右夹爪闭合角度与任务记忆
+
+在 `ros2_ws/src/block_perception/config/perception.yaml` 的 `actuator.ros__parameters` 中修改：
+
+```yaml
+left_claw_close_deg: 0.0
+right_claw_close_deg: 0.0
+```
+
+这是长期保留的配置，普通、原地、清障和首次正式抓取均使用它。一次抓取开始时固定本次使用的角度；动作中修改参数不会改变正在执行的合爪目标。临时 `claw` 动作和丢弃张爪不会覆盖闭合配置。
+
+旧的 `claw_close_deg` 已拆分为以上两个字段，自定义 YAML 也应更新。`ros2 param set` 只修改本次进程的参数，不会自动写回文件。长期修改请编辑 YAML，然后在项目根目录执行：
+
+```bash
+source /opt/ros/humble/setup.bash
+cd ros2_ws
+colcon build --build-base build_gcxl --install-base install_gcxl --packages-select block_perception
+source install_gcxl/setup.bash
+```
+
+重启节点后读取新的配置。记忆与配置分开：记忆只存在本次运行内存里，重启清空。
+`/robot/memory`（`std_msgs/String`，JSON）提供最新决策状态，晚加入的订阅者也能收到；
+`/robot/memory/get`（`std_srvs/Trigger`）返回 JSON 完整历史。
+状态包含任务、最近抓取/丢弃、夹持指令状态和中断记录，所有结果均不代表物理夹持确认。

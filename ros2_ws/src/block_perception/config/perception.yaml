@@ -87,7 +87,7 @@ alignment:                         # 对准指令，20 Hz 发布 /alignment/comm
     pitch_gain: 1.5                # 正角度=低头；仅 camera_servo=true 时有效
     max_yaw_rate: 2.0              # rad/s 限幅；原地转向时左右轮各 ±200（track_width=0.2、scale=1000）
     max_pitch_rate: 0.6            # rad/s（约 34.4°/s）；20 Hz 下每周期最大调整约 1.72°
-    grasp_pitch: 0.43              # rad（约 +20°）；正角度=低头；到达此角度并稳定后
+    grasp_pitch: 0.6981              # rad（约 +50°）；正角度=低头；到达此角度并稳定后
                                    # 触发夹爪闭合。须与 actuator 的 grasp_pitch_deg 同一角度（单位不同），
                                    # 且须在相机可达范围 [cam_min_deg, cam_max_deg] 内；按实际抓取姿态标定
     pitch_timeout: 0.25            # 秒；pitch 反馈过期判定（仅 camera_servo=true）
@@ -121,13 +121,15 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
                                    # 避免小偏差时左右轮差太小、电机不动；0 = 关闭
     cam_min_deg: 0.0               # 相机舵机角度指令下限（度，0=回正）
     cam_max_deg: 90.0              # 上限（度，正=低头）；alignment 的俯仰速度在此范围内积分成角度
-    grasp_pitch_deg: 35.0           # 抓取时相机先低头到的目标角（度，正=低头），到位后夹爪才合拢；
+    grasp_pitch_deg: 40.0           # 抓取时相机先低头到的目标角（度，正=低头），到位后夹爪才合拢；
                                    # 须与 alignment 的 grasp_pitch 同一角度（15° = 0.26 rad），
                                    # 且须在 [cam_min_deg, cam_max_deg] 内；按实际抓取姿态标定
     grasp_pitch_tol: 0.06          # rad；相机到达 grasp_pitch_deg 的到位容差（约 1.7°）
     claw_init_deg: 0.0             # 夹爪初始角（合拢位置，须与 gripper 一致）
     claw_max_deg: 90.0
-    claw_close_deg: 0.0            # 抓取时合拢到的角度（回到初始角），须在 [claw_init_deg, claw_max_deg]
+    left_claw_close_deg: 0.0       # 长期配置：抓取时左夹爪闭合角，度
+    right_claw_close_deg: 5.0      # 长期配置：抓取时右夹爪闭合角，暂定0度，可单独调整
+                                   # 两者均须在 [claw_init_deg, claw_max_deg]；临时开爪不覆盖此配置
     pitch_home: 0.0                # rad；抓取时相机回正的初始角
     pitch_home_tol: 0.03           # rad；回正到位容差
     discard_enabled: true          # 抓取合拢后自动执行丢弃，结束后停车

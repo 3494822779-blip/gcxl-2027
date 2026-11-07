@@ -2,11 +2,11 @@
 
 这份文档用来约定：**机器人选什么目标、按什么顺序动作、什么时候停下来。**
 
-需要改变行为时，直接修改下面对应的规则，再让 AI 按文档修改代码。**只改文档不会自动改变机器人运行行为。** 当前内容以已有实现为起点。
+需要改变行为时，直接修改下面对应的规则，再让 AI 按文档修改代码。**只改文档不会自动改变机器人运行行为。** 当前内容以已有实现为起点。左右闭合角度分别配置，当前都为 0°；任务记忆只保留本次运行，重启清空。
 
 ## 一、整体流程
 
-相机看物块 → 识别和跟踪 → 选择目标 → 对准并接近 → 抓取 → 按任务决定保持夹持或丢弃 → 停车。
+相机看物块 → 识别和跟踪 → 选择目标 → 对准并接近 → 抓取 → 相机发出回正指令 → 更新记忆 → 按任务决定保持夹持或丢弃 → 停车。后续决策结合当前画面和已有记忆。
 
 - 普通启动：自动执行一次“接近并抓取”，当前配置抓完后丢弃。
 - 启动时加 `autonomous:=false`：等待人工发送动作。
@@ -36,8 +36,11 @@
 3. **接近**：水平偏差较大时先转向；足够居中后才前进。越靠近目标，转向越轻。
 4. **提前张爪**：根据物块在画面中的宽度调整夹爪开度。
 5. **触发抓取**：目标位置符合要求，且是实际看到的物块。当前相机舵机开启，还要求反馈有效、低头角达到约 **24.6°**。满足条件立即触发，不额外等待稳定时间。
-6. **执行抓取**：底盘停车，相机继续低头到 **35°**，确认到位后夹爪合到 **0°**，等待 **0.5 秒**。
-7. **处理物块**：要求丢弃就执行下一节；否则保持夹持。最后停车，相机发出回正指令。
+6. **执行抓取**：底盘停车，相机继续低头到 **35°**，确认到位后，左右夹爪分别到各自配置的闭合角度，等待 **0.5 秒**。当前左、右都暂定 **0°**，以后可以单独调整右侧。
+7. **回正并记忆**：相机发出回正指令，记录刚才抓取的物块、用途和执行结果；不额外等待相机回正到位。
+8. **处理物块**：要求丢弃就继续执行丢弃，否则保持夹持。丢弃完成或中断也要更新记忆，最后停车。
+
+闭合角度是长期配置：修改 [perception.yaml](../ros2_ws/src/block_perception/config/perception.yaml) 中 actuator 下的 `left_claw_close_deg` 和 `right_claw_close_deg`。每次抓取都复用；临时张爪不会改写它们。修改后重新编译并重启节点生效。
 
 补充规则：
 
@@ -86,7 +89,7 @@
 |---|---|---|
 | 前进/后退 | `distance_m` 正数前进，负数后退；`speed_mps` 是米/秒 | `-0.2` 表示后退 20 厘米 |
 | 左转/右转 | `angle_deg` 正数左转，负数右转；速度表示每侧轮速 | `90` 表示左转 90° |
-| 夹爪开度 | `angle_deg` 是左右夹爪共同的目标角度 | 当前 0° 合拢，90° 打开 |
+| 夹爪开度 | `angle_deg` 是左右夹爪共同的目标角度 | 临时指定共同角度；抓取时仍使用各自的闭合配置 |
 | 相机俯仰 | `angle_deg` 是目标角度，需开启相机舵机 | 当前正角度表示低头，0° 回正 |
 
 直行、转向完成后停车；夹爪、相机单独动作期间底盘保持停止。超出配置范围的角度不会执行。
@@ -100,12 +103,39 @@
 - 抓取类动作成功后会发出相机回正指令，但不额外等待回正到位。
 - 当前没有“确实夹住物块”的传感器判断；抓取完成表示合爪及等待流程完成。
 
-## 八、怎么调用
+## 八、机器人记忆与后续决策
+
+记忆用于让后续决策知道：**刚才抓了什么、做完了什么、还有什么没有完成。**
+
+- 记录每次抓取的时间、物块类别和目标编号、用途（普通/清障/首次正式抓取）、左右闭合角度及执行结果。没有可靠的物块信息就记为未知。
+- 保留抓取历史，并关联后续丢弃；重复完成通知不会重复计数。
+- 取消、超时会记录中断阶段，不当作成功。没有夹持传感器，只能记录“抓取流程完成”，不声称已经确认夹住。
+- 提供当前任务进度、最近抓取/丢弃、夹持指令状态和中断历史，供后续决策使用。
+- 首次抓取会读取记忆：抓取或丢弃还在执行时不另选目标；清障完成后重新看图选目标；正式抓取完成后停止选择。其他任务的历史不能把本次任务误判为完成。
+- 记忆不代表物块仍在原位置。新的选目标、重试或丢弃策略，按后续任务规则增加，不自行推断。
+- **记忆只存在内存里，节点或机器人重启后清空，不写入文件。** 夹爪角度配置则保留在 YAML 中。
+
+查看当前决策信息：
+
+```bash
+ros2 topic echo /robot/memory --once --qos-durability transient_local
+```
+
+查看本次运行的完整历史：
+
+```bash
+ros2 service call /robot/memory/get std_srvs/srv/Trigger '{}'
+```
+
+## 九、怎么调用
 
 启动并等待人工动作：
 
 ```bash
 BP_DEBUG=actuator,alignment ros2 launch block_perception perception.launch.py camera:=true serial:=true autonomous:=false
+
+抓
+ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: approach_grasp}" --feedback
 ```
 
 例如，执行丢弃：
@@ -122,9 +152,10 @@ ros2 service call /robot/execute/_action/cancel_goal action_msgs/srv/CancelGoal 
 
 首次抓取需先用 `first_grasp.launch.py` 启动，再发送 `operation: first_grasp`。其他动作替换上面命令中的动作名称，并按需增加距离、角度等字段。
 
-## 九、修改后交给 AI 的说明
+## 十、修改后交给 AI 的说明
 
 **本文件中你修改的行为要求，是对应代码修改的依据。** AI 应落实步骤、数值、触发条件和结束状态；发现规则相互矛盾时指出具体冲突，不要自行添加动作。
+修改顺序：先根据我的话改文档，经过我的检查和明确确认，再改代码。
 
 改距离、角度、速度、等待时间时，注明单位；改动作顺序时，说明每一步底盘、夹爪和相机分别做什么。例如：“丢弃第 3 步改为后退 0.3 米，第 5 步仍前进 0.2 米，其余规则不变。”
 
@@ -140,6 +171,7 @@ ros2 service call /robot/execute/_action/cancel_goal action_msgs/srv/CancelGoal 
 | 首次抓取选目标、清障循环 | [first_grasp.py](../ros2_ws/src/block_perception/block_perception/first_grasp.py)、[first_grasp_task.py](../ros2_ws/src/block_perception/block_perception/first_grasp_task.py) |
 | 单独移动、转向、夹爪、相机、取消和超时 | [action_api.py](../ros2_ws/src/block_perception/block_perception/action_api.py) 的 `ActionAPI` |
 | 角度、速度、距离等配置值 | [perception.yaml](../ros2_ws/src/block_perception/config/perception.yaml)；修改时核对上面的执行逻辑是否也要改 |
+| 任务记忆与决策输入 | [task_memory.py](../ros2_ws/src/block_perception/block_perception/task_memory.py)；`actuator.py` 记录和发布，`first_grasp_task.py` 读取进度参与决策 |
 | 动作接口字段 | [RobotTask.action](../ros2_ws/src/block_interfaces/action/RobotTask.action) |
 
-完整的模块目录、接口和技术说明保存在[技术参考](project_actions_reference.md)。它记录整理时的实现，后续行为改动以本文件中修改后的要求为准。
+配置调整见 [parameters.md](parameters.md)，串口协议见 [serial_protocol.md](serial_protocol.md)。

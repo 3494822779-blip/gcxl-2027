@@ -1,0 +1,44 @@
+%YAML:1.0
+# NvDCF configuration for a single block camera (DeepStream 7.1) - 性能优化版本
+BaseConfig:
+  minDetectorConfidence: 0.01
+TargetManagement:
+  enableBboxUnClipping: 0
+  preserveStreamUpdateOrder: 1
+  maxTargetsPerStream: 64
+  minIouDiff4NewTarget: 0.65           # 从0.7降低，更快建立新跟踪
+  minTrackerConfidence: 0.35           # 从0.4降低，保留更多候选目标
+  probationAge: 1                      # 从2降低到1，更快确认新目标
+  maxShadowTrackingAge: 20             # 从30降低，减少无效跟踪内存
+  earlyTerminationAge: 1
+TrajectoryManagement:
+  useUniqueID: 1
+DataAssociator:
+  dataAssociatorType: 0
+  associationMatcherType: 1
+  checkClassMatch: 1
+  minMatchingScore4Overall: 0.35       # 从0.4降低，更宽松匹配
+  minMatchingScore4SizeSimilarity: 0.1 # 从0.15降低
+  minMatchingScore4Iou: 0.15           # 从0.2降低
+  minMatchingScore4VisualSimilarity: 0.25  # 从0.3降低
+  matchingScoreWeight4VisualSimilarity: 0.5  # 从0.6降低，减少视觉特征计算开销
+  matchingScoreWeight4SizeSimilarity: 0.2
+  matchingScoreWeight4Iou: 0.3         # 从0.2提高，更依赖几何信息（更快）
+  tentativeDetectorConfidence: 0.01
+  minMatchingScore4TentativeIou: 0.4   # 从0.5降低
+StateEstimator:
+  stateEstimatorType: 1
+  processNoiseVar4Loc: 2.5             # 30fps标准过程噪声估计
+  processNoiseVar4Size: 1.0            # 目标尺寸变化噪声
+  processNoiseVar4Vel: 0.125           # 30fps标准速度噪声
+  measurementNoiseVar4Detector: 2.0    # 相信高质量检测
+  measurementNoiseVar4Tracker: 5.0     # tracker测量噪声
+VisualTracker:
+  visualTrackerType: 1
+  useColorNames: 1
+  useHog: 0                            # 保持关闭HOG以提升性能
+  featureImgSizeLevel: 1               # 从2降低到1，使用更小特征图提升速度
+  featureFocusOffsetFactor_y: 0.0
+  filterLr: 0.1                        # 从0.075提高，更快适应
+  filterChannelWeightsLr: 0.15         # 从0.1提高
+  gaussianSigma: 0.6                   # 从0.75降低，更锐利特征

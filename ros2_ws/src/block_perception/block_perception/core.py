@@ -122,8 +122,9 @@ def validate(values):
         raise ValueError('claw_init_deg must not be negative')
     if 'claw_max_deg' in values and values['claw_max_deg'] < values['claw_init_deg']:
         raise ValueError('claw_max_deg must not be below claw_init_deg')
-    if 'claw_close_deg' in values and not values['claw_init_deg'] <= values['claw_close_deg'] <= values['claw_max_deg']:
-        raise ValueError('claw_close_deg must be within [claw_init_deg, claw_max_deg]')
+    for name in ('left_claw_close_deg', 'right_claw_close_deg'):
+        if name in values and not values['claw_init_deg'] <= values[name] <= values['claw_max_deg']:
+            raise ValueError(f'{name} must be within [claw_init_deg, claw_max_deg]')
 
     if values.get('discard_enabled') and not values['claw_init_deg'] <= 90. <= values['claw_max_deg']:
         raise ValueError('discard requires 90 degrees within claw limits')

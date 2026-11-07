@@ -58,7 +58,7 @@ def test_claws_follow_angles_but_not_below_init(node):
 
 
 def test_fixed_camera_sends_constant_angle_and_grasp_closes_claws(node):
-    node.set_parameters([Parameter('discard_enabled', value=False), Parameter('claw_close_deg', value=25.), Parameter('camera_fixed_deg', value=5.)])
+    node.set_parameters([Parameter('discard_enabled', value=False), Parameter('left_claw_close_deg', value=25.), Parameter('right_claw_close_deg', value=25.), Parameter('camera_fixed_deg', value=5.)])
     node.command(cmd(node, forward_speed=.15, yaw_rate=.2, pitch_rate=-.1))   # pitch_rate is ignored
     lw, rw, lg, rg, cp = node.compute(now(node) + .05)
     assert rw > lw and lg == rg == 0. and cp == 5.
@@ -108,7 +108,7 @@ def test_servo_camera_starts_from_feedback(servo):
 
 def test_servo_grasp_pitches_down_then_closes_then_homes(servo):
     node = servo
-    node.set_parameters([Parameter('discard_enabled', value=False), Parameter('claw_close_deg', value=25.)])
+    node.set_parameters([Parameter('discard_enabled', value=False), Parameter('left_claw_close_deg', value=25.), Parameter('right_claw_close_deg', value=25.)])
     node.command(cmd(node, grasp_request=True, forward_speed=.15, yaw_rate=.3))
     assert node.state == 'grasp'
     # Phase 1: camera commanded down to the grasp angle; claws stay open at the initial angle.
@@ -187,7 +187,7 @@ def test_first_formal_grasp_holds_despite_auto_discard(node):
     node.compute(t)
     node.compute(t + 1.)
     assert node.state == 'done'
-    assert node.claw == node.settings['claw_close_deg']
+    assert node.claw == node.settings['left_claw_close_deg']
 
 
 def test_first_rejects_nonzero_formal_and_stale_requests(node):
@@ -223,3 +223,67 @@ def test_new_first_task_can_approach_after_done_but_same_task_cannot(node):
     assert node.state == 'track'
     lw, rw, *_ = node.compute(now(node))
     assert lw > 0 and rw > 0
+
+
+def test_independent_closure_holds_through_discard_first_turn_and_shutdown(node):
+    node.set_parameters([Parameter('left_claw_close_deg', value=0.),
+                         Parameter('right_claw_close_deg', value=17.)])
+    node.command(cmd(node, grasp_request=True))
+    t = now(node)
+    assert node.compute(t)[2:4] == (0., 17.)
+    node.compute(t + 1.)
+    assert node.state == 'discard'
+    assert node.compute(t + 1.05)[2:4] == (0., 17.)
+    frames = []
+    class Capture:
+        def publish(self, msg):
+            frames.append(msg.data)
+    node.pub = Capture()
+    node.on_stop(repeats=1, period=0.)
+    assert ',0.000,0.000,0.0,17.0,' in frames[0]
+    node.compute(t + 10.)  # stop between turn and open
+    assert node.compute(t + 10.05)[2:4] == (90., 90.)
+    assert node.settings['right_claw_close_deg'] == 17.
+
+
+@pytest.mark.parametrize('name,value', [('left_claw_close_deg', -1.),
+    ('right_claw_close_deg', 91.), ('right_claw_close_deg', math.nan)])
+def test_closure_angle_limits(node, name, value):
+    assert not node.set_parameters_atomically([Parameter(name, value=value)]).successful
+
+
+def test_closure_parameters_snapshot_for_entire_grasp(node):
+    node.set_parameters([Parameter('right_claw_close_deg', value=12.), Parameter('discard_enabled', value=False)])
+    node.command(cmd(node, grasp_request=True))
+    node.set_parameters([Parameter('right_claw_close_deg', value=19.)])
+    assert node.compute(now(node))[2:4] == (0., 12.)
+    assert node.memory.grasp['right_close_deg'] == 12.
+    assert node.settings['right_claw_close_deg'] == 19.
+
+
+def test_config_survives_node_restart_but_task_memory_does_not(tmp_path):
+    params = tmp_path / 'closure.yaml'
+    params.write_text('''actuator:
+  ros__parameters:
+    autonomous: false
+    left_claw_close_deg: 0.0
+    right_claw_close_deg: 13.0
+''')
+    sessions = []
+    for _ in range(2):
+        rclpy.init(args=['--ros-args', '--params-file', str(params)])
+        n = Actuator()
+        try:
+            assert n.settings['left_claw_close_deg'] == 0.
+            assert n.settings['right_claw_close_deg'] == 13.
+            assert n.memory.data['grasps'] == []
+            sessions.append(n.memory.session_id)
+            n.memory.begin_task('grasp')
+            n.begin_grasp()
+            assert n.compute(now(n))[2:4] == (0., 13.)
+            n.claw = 90.  # a temporary opening must not rewrite the persistent configuration
+        finally:
+            n.action_api.server.destroy()
+            n.destroy_node()
+            rclpy.shutdown()
+    assert sessions[0] != sessions[1]

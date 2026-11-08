@@ -17,8 +17,8 @@ from std_msgs.msg import Bool, String
 from std_srvs.srv import Trigger
 from block_interfaces.msg import AlignmentCommand, GripperAngles
 from .nodes import ConfigNode, run, seconds
-from .discard import DiscardTask
-from .action_api import ActionAPI
+from .sweep import Sweep
+from .action_api import ActionAPI, TARGET_OPERATIONS
 from .task_memory import TaskMemory
 
 
@@ -73,12 +73,16 @@ class Actuator(ConfigNode):
         super().__init__('actuator')
         self.configure(dict(camera_servo=False, camera_fixed_deg=0.,
                             track_width=0.2, wheel_speed_scale=1000., max_wheel_speed=0.5, min_turn_speed=0.1,
-                            cam_min_deg=-15., cam_max_deg=30.,
-                            grasp_pitch_deg=-15., grasp_pitch_tol=0.03,
-                            claw_init_deg=0., claw_max_deg=90.,
-                            left_claw_close_deg=0., right_claw_close_deg=0.,
+                            cam_min_deg=0., cam_max_deg=90.,
+                            grasp_pitch_deg=40., grasp_pitch_tol=math.radians(1.7), claw_open_pitch_deg=20.,
+                            claw_init_deg=0., claw_max_deg=90., claw_min_deg=-30.,
+                            sweep_claw_deg=-30., sweep_overlap=0.5, sweep_weight=0.2,
+                            sweep_near_multiplier=2., sweep_max_yaw_rate=1.,
+                            sweep_tau_sec=0.33, sweep_duration_sec=1.,
+                            max_yaw_rate=2., autonomous_target_class=-1,
+                            left_claw_close_deg=0., right_claw_close_deg=5.,
                             pitch_home=0.0, pitch_home_tol=0.03,
-                            discard_enabled=True, discard_distance_m=0.2,
+                            discard_enabled=False, discard_distance_m=0.2,
                             discard_speed_mps=0.1, discard_turn_speed_mps=0.17,
                             claw_settle_sec=0.5, claw_deadband_deg=0., pitch_timeout=0.25, pitch_joint='camera_pitch'))
         self.declare_parameter('task_mode', 'normal', ParameterDescriptor(read_only=True))
@@ -90,9 +94,9 @@ class Actuator(ConfigNode):
         self.grip = None
         self.pitch = None
         self.pitch_time = None
-        self.declare_parameter('autonomous', True, ParameterDescriptor(read_only=True))
+        self.declare_parameter('autonomous', False, ParameterDescriptor(read_only=True))
         self.state = 'hold'
-        self.discard_task = None
+        self.reset_sweep()
         self.claw = self.settings['claw_init_deg']
         self.close_time = None
         self.cam_target = None      # absolute camera pitch command, degrees
@@ -116,7 +120,7 @@ class Actuator(ConfigNode):
         self.control_clock = Clock(clock_type=ClockType.STEADY_TIME)
         self.create_timer(0.05, self.tick, clock=self.control_clock)
         self.auto_timer = None
-        if self.get_parameter('autonomous').value and self.task_mode == 'normal':
+        if self.get_parameter('autonomous').value:
             self.auto_timer = self.create_timer(0.1, self.start_autonomous, clock=self.control_clock)
 
     @property
@@ -149,7 +153,11 @@ class Actuator(ConfigNode):
     def start_autonomous(self):
         self.auto_timer.cancel()
         if not self.action_api.reserved:
-            self.action_api.submit('approach_grasp', discard_after=self.settings['discard_enabled'])
+            cls = self.settings['autonomous_target_class']
+            if cls < 0:
+                self.get_logger().error('autonomous requires autonomous_target_class; staying stopped')
+                return
+            self.action_api.submit('target_grasp', has_target_class=True, target_class_id=cls)
 
     def command(self, msg):
         if not self.action_api.allows_command(msg):
@@ -158,42 +166,71 @@ class Actuator(ConfigNode):
         if seconds(msg.header.stamp) <= self.resume_after:
             return
         self.cmd = msg
-        # 调试：记录所有收到的alignment命令
-        self.dbg.event('alignment_cmd', every=0.5,
-                       grasp_request=msg.grasp_request,
-                       valid=msg.valid,
-                       aligned=msg.aligned,
-                       reason=msg.reason,
-                       track_id=msg.track_id,
-                       first_grasp_id=msg.first_grasp_id,
-                       state=self.state)
-        if (self.state == 'done' and msg.first_grasp_id and msg.valid and
-                self.fresh(msg, now) and
-                (self.action is None or self.action.first_grasp_id != msg.first_grasp_id)):
-            self.state, self.close_time = 'track', None
-        available = self.state == 'track'
-        if msg.grasp_request and available and self.action_api.allows_grasp():
-            if not msg.valid or msg.predicted or not self.fresh(msg, now):
-                self.dbg.event('grasp_rejected', reason='not_valid_or_predicted_or_stale',
-                               valid=msg.valid, predicted=msg.predicted, fresh=self.fresh(msg, now))
-                return
-            if msg.first_grasp_id:
-                if not msg.clearance and msg.class_id != 0:
-                    self.dbg.event('grasp_rejected', reason='non_clearance_requires_class_0',
-                                   clearance=msg.clearance, class_id=msg.class_id)
-                    return
-                if msg.clearance and not self.settings['claw_init_deg'] <= 90. <= self.settings['claw_max_deg']:
-                    self.dbg.event('grasp_rejected', reason='clearance_needs_90deg_support',
-                                   claw_init=self.settings['claw_init_deg'],
-                                   claw_max=self.settings['claw_max_deg'])
-                    return
-            self.begin_grasp(msg)
-        elif msg.grasp_request and not available:
-            self.dbg.event('grasp_rejected', reason='state_not_track', state=self.state)
+        if self.state != 'track' or not msg.valid or msg.predicted or not self.fresh(msg, now):
+            return
+        if not self.action_api.allows_grasp():
+            return
+        if self.formal_track_id is None:
+            self.formal_track_id = msg.track_id
+        if msg.track_id != self.formal_track_id:
+            self.cmd = None
+            return
+        if self.sweep is None and msg.sweep_side in (-1, 1):
+            self.sweep = Sweep(msg.sweep_side, msg.obstacle_overlap, msg.obstacle_near, self.settings)
+            if msg.sweep_side < 0:
+                self.left_claw = self.sweep.angle
+            else:
+                self.right_claw = self.sweep.angle
+            self.opened_at = None
+            self.memory.begin_sweep(msg.track_id, msg.class_id, msg.obstacle_id, msg.sweep_side)
+            self.publish_memory()
+        reason = self.grasp_blocker(now)
+        if reason:
+            self.dbg.event('grasp_wait', every=0.5, reason=reason, track_id=msg.track_id,
+                           request=msg.grasp_request,
+                           grip_reason=self.grip.reason if self.grip is not None else 'no_gripper',
+                           left_deg=self.left_claw, right_deg=self.right_claw)
+            return
+        self.begin_grasp(msg)
+
+    def grasp_blocker(self, now):
+        """Report actual executor admission, rather than the last visual readiness label."""
+        msg, g, p = self.cmd, self.grip, self.settings
+        if msg is None:
+            return 'waiting_for_target'
+        if not self.fresh(msg, now) or not msg.valid:
+            return 'stale_or_invalid_target'
+        if msg.predicted:
+            return 'waiting_for_locked_target'
+        if self.sweep is not None and not self.sweep.done:
+            return 'sweeping'
+        if not msg.grasp_request:
+            return msg.reason or 'aligning'
+        if self.opening_track_id != msg.track_id or self.opening_angles is None:
+            if p['camera_servo'] and (self.pitch_time is None or
+                    not 0 <= now - self.pitch_time <= p['pitch_timeout'] or
+                    self.pitch < math.radians(p['claw_open_pitch_deg'])):
+                return 'waiting_for_open_pitch'
+            if not self.fresh(g, now) or not g.angles_ready or g.track_id != msg.track_id:
+                return 'waiting_for_gripper_angles'
+            return 'waiting_for_opening'
+        if self.opened_at is None:
+            return 'waiting_for_opening'
+        if time.monotonic() - self.opened_at < p['claw_settle_sec']:
+            return 'opening'
+        return ''
+
+    def reset_sweep(self):
+        self.sweep = None
+        self.sweep_last_time = None
+        self.formal_track_id = None
+        self.opened_at = None
+        self.opening_angles = None
+        self.opening_track_id = None
 
     def finish_first(self, now):
         if (self.action_api.goal is not None and
-                self.action_api.goal.operation == 'first_grasp' and self.action is not None and
+                self.action_api.goal.operation in TARGET_OPERATIONS and self.action is not None and
                 self.action.first_grasp_id == self.action_api.first_id and not self.action.clearance):
             self.action_api.completed = True
         if self.action is None or not self.action.first_grasp_id:
@@ -208,8 +245,17 @@ class Actuator(ConfigNode):
             self.close_time = None
 
     def angles(self, msg):
-        if seconds(msg.header.stamp) > self.resume_after:
-            self.grip = msg
+        if seconds(msg.header.stamp) <= self.resume_after:
+            return
+        now = self.get_clock().now().nanoseconds * 1e-9
+        # Frame and target topics arrive independently. A temporary matching status
+        # is not a negative observation; retain the last same-target proposal only
+        # for its original TTL. Actual invalid bounds/lost targets still invalidate it.
+        if (not msg.angles_ready and msg.reason == 'waiting_for_matching_frame' and
+                self.fresh(self.grip, now) and self.grip.angles_ready and
+                self.grip.track_id == msg.track_id):
+            return
+        self.grip = msg
 
     def joints(self, msg):
         try:
@@ -243,12 +289,6 @@ class Actuator(ConfigNode):
         if msg.data:
             self.action_api.submit('discard')
 
-    def start_discard(self):
-        self.discard_task = DiscardTask(self.settings, self.left_claw, self.right_claw)
-        self.memory.begin_discard()
-        self.state = 'discard'
-        self.dbg.event('state', state='discard')
-
     def compute(self, now):
         """Return (left_wheel, right_wheel, left_claw_deg, right_claw_deg, camera_angle_deg).
 
@@ -269,25 +309,59 @@ class Actuator(ConfigNode):
             self.cam_target = math.degrees(self.pitch if pitch_fresh else p['pitch_home'])
         if self.state == 'track':
             c = self.cmd
-            if self.fresh(c, now) and c.valid:
-                lw, rw = wheel_speeds(c.forward_speed, c.yaw_rate, p['track_width'], p['max_wheel_speed'],
-                                      p['min_turn_speed'])
+            steady = time.monotonic()
+            step = 0. if self.sweep_last_time is None else min(max(steady - self.sweep_last_time, 0.), 0.1)
+            self.sweep_last_time = steady
+            valid = self.fresh(c, now) and c.valid and (not c.first_grasp_id or not c.predicted)
+            sweeping = self.sweep is not None and not self.sweep.done
+            if valid:
+                bias = 0.
+                if sweeping:
+                    self.sweep.advance(step)
+                    bias = self.sweep.yaw()
+                    if self.sweep.done:
+                        self.memory.complete_sweep()
+                        self.opened_at = None
+                # Apply minimum turn to the visual correction only. The sweep bias must
+                # decay continuously rather than being raised to minimum motor speed.
+                half = c.yaw_rate * p['track_width'] / 2
+                if half and abs(half) < p['min_turn_speed']:
+                    half = math.copysign(p['min_turn_speed'], half)
+                yaw = clamp(2 * half / p['track_width'] + bias, p['max_yaw_rate'])
+                forward = 0. if c.grasp_request else c.forward_speed
+                lw, rw = wheel_speeds(forward, yaw, p['track_width'], p['max_wheel_speed'])
                 if servo:
                     self.cam_target += math.degrees(c.pitch_rate) * dt
-            g = self.grip
-            if self.fresh(g, now) and g.angles_ready:
-                target = max(p['claw_init_deg'], min(p['claw_max_deg'], math.degrees(g.left_angle_rad)))
-                # Box width jitters by a few px every frame; ignore sub-deadband changes so the claw servo holds still.
-                if max(abs(target - self.left_claw), abs(target - self.right_claw)) > p['claw_deadband_deg']:
-                    self.memory.uncertain_hold('visual_gripper_adjustment')
-                    self.claw = target
+            # Capture width exactly once for this target. Subsequent jitter, missing
+            # width proposals and pitch crossings do not change the saved opening.
+            if valid and self.opening_track_id is not None and c.track_id != self.opening_track_id:
+                self.opening_track_id = self.opening_angles = self.opened_at = None
+            trigger = (pitch_fresh and self.pitch >= math.radians(p['claw_open_pitch_deg'])
+                       if servo else valid and c.open_allowed)
+            if valid and not c.predicted and not sweeping and self.opened_at is None:
+                g = self.grip
+                if (self.opening_angles is None and trigger and self.fresh(g, now) and
+                        g.angles_ready and g.track_id == c.track_id and
+                        all(math.isfinite(v) for v in (g.left_angle_rad, g.right_angle_rad))):
+                    self.opening_angles = tuple(max(p['claw_init_deg'], min(p['claw_max_deg'],
+                        math.degrees(angle))) for angle in (g.left_angle_rad, g.right_angle_rad))
+                    self.opening_track_id = c.track_id
+                if self.opening_angles is not None and self.opening_track_id == c.track_id:
+                    # A later sweep may temporarily override one claw; restore the same
+                    # saved opening afterwards without measuring width a second time.
+                    self.memory.uncertain_hold('visual_gripper_open_once')
+                    self.left_claw, self.right_claw = self.opening_angles
+                    self.opened_at = steady
+                    self.dbg.event('claw_open_once', track_id=c.track_id,
+                                   left_deg=self.left_claw, right_deg=self.right_claw,
+                                   trigger_pitch_deg=p['claw_open_pitch_deg'])
         elif self.state == 'grasp':
             # Wheels stopped. With a camera servo: phase 1 pitches the camera down at the block (claws
             # stay open), phase 2 closes the claws once the grasp angle is reached.
             reached = True
             if servo:
                 self.cam_target = p['grasp_pitch_deg']
-                reached = pitch_fresh and abs(math.radians(p['grasp_pitch_deg']) - self.pitch) <= p['grasp_pitch_tol']
+                reached = pitch_fresh and self.pitch >= math.radians(p['grasp_pitch_deg']) - p['grasp_pitch_tol']
             if reached:
                 self.left_claw, self.right_claw = self.grasp_close
                 self.memory.phase('claw_close')
@@ -297,30 +371,11 @@ class Actuator(ConfigNode):
                     if servo:
                         self.cam_target = math.degrees(p['pitch_home'])
                     self.memory.complete_grasp()
-                    discard = (self.action.clearance if self.action is not None and
-                               self.action.first_grasp_id else p['discard_enabled'])
-                    goal = self.action_api.goal
-                    if goal is not None and goal.operation in ('grasp', 'approach_grasp'):
-                        discard = goal.discard_after
-                    if discard:
-                        self.start_discard()
-                    else:
-                        self.state = 'done'
-                        self.dbg.event('state', state='done')
-                        self.finish_first(now)
+                    self.state = 'done'
+                    self.dbg.event('state', state='done')
+                    self.finish_first(now)
             else:
                 self.close_time = None
-        elif self.state == 'discard':
-            if servo:
-                self.cam_target = math.degrees(p['pitch_home'])
-            self.memory.phase(self.discard_task.phase)
-            lw, rw, self.left_claw = self.discard_task.step(now)
-            self.right_claw = self.discard_task.right_claw
-            if self.discard_task.done:
-                self.memory.complete_discard()
-                self.state = 'done'
-                self.dbg.event('state', state='done')
-                self.finish_first(now)
         elif self.state == 'done' and servo:
             # Grasp finished; command the camera back to its initial (home) pitch.
             self.cam_target = math.degrees(p['pitch_home'])

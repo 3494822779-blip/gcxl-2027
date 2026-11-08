@@ -8,13 +8,15 @@ import time
 from rclpy.action import ActionClient, ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.task import Future
-from std_msgs.msg import Bool, UInt64
+from rclpy.qos import QoSProfile, DurabilityPolicy
+from std_msgs.msg import Bool
 from block_interfaces.action import RobotTask
-from .discard import DiscardTask
+from block_interfaces.msg import TargetTask
+TARGET_OPERATIONS = {'target_grasp', 'approach_grasp', 'first_grasp'}
 
 
 class ActionAPI:
-    OPERATIONS = {'align', 'approach_grasp', 'grasp', 'discard', 'first_grasp',
+    OPERATIONS = {'align', 'target_grasp', 'approach_grasp', 'grasp', 'first_grasp',
                   'move', 'turn', 'claw', 'camera', 'stop'}
 
     def __init__(self, node):
@@ -26,8 +28,8 @@ class ActionAPI:
         self.completed = False
         self.first_id = 0
         self.last_first_id = 0
-        self.first_start = node.create_publisher(UInt64, 'task/first_grasp_id', 10)
-        self.first_cancel = node.create_publisher(UInt64, 'task/first_grasp_cancel', 10)
+        self.target_request = node.create_publisher(TargetTask, 'task/target_grasp',
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.reset = node.create_publisher(Bool, 'target/reset', 10)
         self.client = ActionClient(node, RobotTask, 'robot/execute')
         self.server = ActionServer(node, RobotTask, 'robot/execute',
@@ -60,17 +62,15 @@ class ActionAPI:
             raise ValueError('goal values must be finite')
         if goal.timeout_sec < 0 or goal.speed_mps < 0:
             raise ValueError('timeout/speed must be nonnegative')
-        if goal.operation == 'first_grasp' and self.node.task_mode != 'first_grasp':
-            raise ValueError('first_grasp requires task:=first_grasp launch')
-        if goal.operation in ('align', 'approach_grasp') and self.node.task_mode != 'normal':
-            raise ValueError('align/approach_grasp require the normal selector')
-        if goal.operation == 'claw' and not p['claw_init_deg'] <= goal.angle_deg <= p['claw_max_deg']:
+        if goal.discard_after:
+            raise ValueError('discard_after is disabled')
+        if goal.operation in TARGET_OPERATIONS and (not goal.has_target_class or goal.target_class_id < 0):
+            raise ValueError('target grasp requires an explicit nonnegative target_class_id')
+        if goal.operation == 'claw' and not p['claw_min_deg'] <= goal.angle_deg <= p['claw_max_deg']:
             raise ValueError('claw angle outside limits')
         if goal.operation == 'camera' and (not p['camera_servo'] or
                 not p['cam_min_deg'] <= goal.angle_deg <= p['cam_max_deg']):
             raise ValueError('camera servo disabled or angle outside limits')
-        if goal.operation == 'discard' or goal.discard_after or goal.operation == 'first_grasp':
-            DiscardTask(p, self.node.claw)  # validate before accepting a hardware goal
 
     def accept(self, goal):
         try:
@@ -79,7 +79,7 @@ class ActionAPI:
             self.node.get_logger().warning(f'Action rejected: {exc}')
             return GoalResponse.REJECT
         # Reserve during acceptance, not execute: two simultaneous goals cannot both win.
-        if self.reserved or (self.node.state in ('grasp', 'discard') and goal.operation != 'stop'):
+        if self.reserved or (self.node.state == 'grasp' and goal.operation != 'stop'):
             return GoalResponse.REJECT
         if self.node.auto_timer is not None:
             self.node.auto_timer.cancel()
@@ -96,28 +96,30 @@ class ActionAPI:
         self.completed = False
         self.motion_started = None
         n, g = self.node, self.goal
-        self.timeout = g.timeout_sec or (180. if g.operation == 'first_grasp' else 60.)
+        self.timeout = g.timeout_sec or (180. if g.operation in TARGET_OPERATIONS else 60.)
         self.first_id = 0
         self.hold()
         n.action = None
         n.close_time = None
-        if g.operation == 'first_grasp':
+        n.reset_sweep()
+        if g.operation in TARGET_OPERATIONS:
             self.first_id = max(1, self.last_first_id + 1, n.get_clock().now().nanoseconds)
             self.last_first_id = self.first_id
         n.memory.begin_task(g.operation, self.first_id)
+        if g.operation in TARGET_OPERATIONS:
+            n.memory.task['target_class_id'] = g.target_class_id
         n.publish_memory()
         try:
             self.validate(g)
-            if g.operation in ('align', 'approach_grasp', 'first_grasp'):
+            if g.operation == 'align' or g.operation in TARGET_OPERATIONS:
                 n.state = 'track'
-                if g.operation == 'first_grasp':
-                    self.first_start.publish(UInt64(data=self.first_id))
+                if g.operation in TARGET_OPERATIONS:
+                    self.target_request.publish(TargetTask(task_id=self.first_id,
+                        target_class_id=g.target_class_id, active=True))
                 else:
                     self.reset.publish(Bool(data=True))
             elif g.operation == 'grasp':
                 n.begin_grasp()
-            elif g.operation == 'discard':
-                n.start_discard()
             elif g.operation in ('move', 'turn'):
                 speed = g.speed_mps or n.settings['discard_speed_mps']
                 if g.operation == 'turn':
@@ -155,10 +157,10 @@ class ActionAPI:
                              phase, message)
         n.publish_memory()
         self.hold()
-        if success and n.settings['camera_servo'] and self.goal.operation in ('grasp', 'approach_grasp', 'first_grasp', 'discard'):
+        if success and n.settings['camera_servo'] and (self.goal.operation == 'grasp' or self.goal.operation in TARGET_OPERATIONS):
             n.cam_target = math.degrees(n.settings['pitch_home'])
-        if self.goal.operation == 'first_grasp':
-            self.first_cancel.publish(UInt64(data=self.first_id))
+        if self.goal.operation in TARGET_OPERATIONS:
+            self.target_request.publish(TargetTask(task_id=self.first_id, active=False))
         if canceled:
             self.handle.canceled()
         elif success:
@@ -169,11 +171,14 @@ class ActionAPI:
 
     def current_phase(self):
         n = self.node
-        if n.state == 'discard':
-            return n.discard_task.phase
         if n.state == 'grasp':
             return 'claw_close' if n.close_time is not None else 'grasp_pitch'
         if n.state == 'track':
+            now = n.get_clock().now().nanoseconds * 1e-9
+            if self.goal is not None and self.goal.operation in TARGET_OPERATIONS:
+                return n.grasp_blocker(now) or 'grasp_ready'
+            if n.cmd is not None and (not n.fresh(n.cmd, now) or not n.cmd.valid):
+                return 'stale_or_invalid_target'
             return (n.cmd.reason if n.cmd is not None else '') or 'waiting_for_target'
         if n.state == 'hold' and self.goal is not None:
             return self.goal.operation
@@ -197,7 +202,7 @@ class ActionAPI:
         self.handle.publish_feedback(RobotTask.Feedback(
             phase=phase, elapsed_sec=elapsed,
             track_id=source.track_id if source is not None else 0,
-            clearance=bool(source is not None and source.clearance)))
+            clearance=bool(n.sweep is not None and not n.sweep.done and n.state == 'track')))
         motion_elapsed = 0.
         if g.operation in ('move', 'turn', 'claw'):
             if self.motion_started is None:
@@ -221,19 +226,19 @@ class ActionAPI:
         elif g.operation == 'align':
             now = n.get_clock().now().nanoseconds * 1e-9
             done = n.fresh(n.cmd, now) and n.cmd.valid and not n.cmd.predicted and n.cmd.aligned
-        elif g.operation in ('grasp', 'approach_grasp', 'discard'):
+        elif g.operation == 'grasp' or g.operation in TARGET_OPERATIONS:
             done = n.state == 'done'
         if done:
             self.finish(True, 'completed (timed motion is not physical grasp/odometry confirmation)')
         return None
 
     def allows_command(self, msg):
-        if not self.reserved:
-            return True
-        if self.goal is None:
+        if not self.reserved or self.goal is None:
             return False
         op = self.goal.operation
-        return op in ('align', 'approach_grasp') or (op == 'first_grasp' and msg.first_grasp_id == self.first_id)
+        return ((op == 'align' and msg.first_grasp_id == 0) or
+                (op in TARGET_OPERATIONS and msg.first_grasp_id == self.first_id
+                 and msg.class_id == self.goal.target_class_id and not msg.clearance))
 
     def allows_grasp(self):
-        return self.goal is None or self.goal.operation != 'align'
+        return self.goal is not None and self.goal.operation in TARGET_OPERATIONS

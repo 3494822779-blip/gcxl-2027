@@ -1,34 +1,28 @@
-"""Image-space candidate selection for the first class-0 grasp."""
+"""Geometry for explicit-class target selection and single-obstacle sweeping."""
 import math
 
 
-def candidates(boxes, overlap=0.0):
-    """Return (action box, clearance) pairs, direct class-0 grasps first.
+def valid_boxes(boxes):
+    return [b for b in boxes if b.observed and b.width > 0 and b.height > 0
+            and all(math.isfinite(v) for v in (b.x, b.y, b.width, b.height, b.confidence))]
 
-    Exclusion strip: target left/right, image top to target top. Overlap is
-    intersection area / class-1 box area (not IoU). Foreground is estimated
-    using a larger bottom coordinate and positive horizontal overlap.
-    """
-    boxes = [b for b in boxes if b.width > 0 and b.height > 0 and
-             all(math.isfinite(v) for v in (b.x, b.y, b.width, b.height))]
-    result = []
-    for target in boxes:
-        if target.class_id != 0 or not target.observed or target.y <= 0:
+
+def candidates(boxes, target_class):
+    return sorted((b for b in valid_boxes(boxes) if b.class_id == target_class),
+                  key=lambda b: (-(b.y + b.height), -b.confidence, b.track_id))
+
+
+def obstacle_for(target, boxes):
+    """Return (box, side, horizontal fraction of target, actual area overlap)."""
+    front = []
+    for b in valid_boxes(boxes):
+        width = min(target.x + target.width, b.x + b.width) - max(target.x, b.x)
+        if b.track_id == target.track_id or width <= 0 or b.y + b.height <= target.y + target.height:
             continue
-        def horizontal(b):
-            return max(0., min(target.x + target.width, b.x + b.width) - max(target.x, b.x))
-        unsafe = any(b.class_id == 1 and
-                     horizontal(b) * max(0., min(target.y, b.y + b.height) - max(0., b.y))
-                     / (b.width * b.height) > overlap for b in boxes)
-        if unsafe:
-            continue
-        front = [b for b in boxes if b.track_id != target.track_id and horizontal(b) > 0 and
-                 b.y + b.height > target.y + target.height]
-        if front:
-            nearest = max(front, key=lambda b: (b.y + b.height, b.confidence, -b.track_id))
-            if nearest.observed:
-                result.append((nearest, True))
-        else:
-            result.append((target, False))
-    return sorted(result, key=lambda item: (item[1], -(item[0].y + item[0].height),
-                                           -item[0].confidence, item[0].track_id))
+        front.append((width, b))
+    if not front:
+        return None
+    width, b = max(front, key=lambda item: (item[0], item[1].confidence, -item[1].track_id))
+    side = -1 if b.x + b.width / 2 <= target.x + target.width / 2 else 1
+    near = min(target.y + target.height, b.y + b.height) > max(target.y, b.y)
+    return b, side, width / target.width, near

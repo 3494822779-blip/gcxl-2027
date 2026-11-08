@@ -44,6 +44,10 @@ def guard_single_instance(context):
 
 
 def launch_nodes(context):
+    autonomous = LaunchConfiguration('autonomous').perform(context).lower() in ('true', '1')
+    target_class = int(LaunchConfiguration('target_class').perform(context))
+    if autonomous and target_class < 0:
+        raise RuntimeError('autonomous:=true requires target_class:=<nonnegative class>')
     guard_single_instance(context)
     params = [LaunchConfiguration('params')]
     actions = [Node(package='block_deepstream', executable='perception', name='perception',
@@ -59,7 +63,8 @@ def launch_nodes(context):
         node_params = params
         if name == 'actuator':
             node_params = params + [{'task_mode': task, 'autonomous': ParameterValue(
-                LaunchConfiguration('autonomous'), value_type=bool)}]
+                LaunchConfiguration('autonomous'), value_type=bool),
+                'autonomous_target_class': target_class}]
         actions.append(Node(package='block_perception', executable=name, name=name,
                             parameters=node_params, output='screen'))
     actions.append(Node(package='serial_minimal', executable='serial_node', name='serial_node',
@@ -77,7 +82,7 @@ def generate_launch_description():
     share = FindPackageShare('block_perception')
     defaults = {
         'params': PathJoinSubstitution([share, 'config', 'perception.yaml']),
-        'autonomous': 'true', 'task': 'normal',
+        'autonomous': 'false', 'task': 'normal', 'target_class': '-1',
         'display': 'true', 'headless': 'false', 'serial': 'false',
     }
     actions = [DeclareLaunchArgument(k, default_value=v) for k, v in defaults.items()]

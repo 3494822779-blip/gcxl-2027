@@ -11,7 +11,7 @@ from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 from block_interfaces.action import RobotTask
-from block_interfaces.msg import AlignmentCommand
+from block_interfaces.msg import AlignmentCommand, GripperAngles
 from block_perception.actuator import Actuator
 from block_perception.first_grasp_task import FirstGraspTask
 
@@ -20,7 +20,8 @@ from block_perception.first_grasp_task import FirstGraspTask
 def rig():
     rclpy.init()
     n = Actuator()
-    n.auto_timer.cancel()
+    if n.auto_timer is not None:
+        n.auto_timer.cancel()
     n.set_parameters([Parameter('claw_settle_sec', value=.01)])
     n.state = 'hold'
     client = ActionClient(n, RobotTask, 'robot/execute')
@@ -43,6 +44,9 @@ def until(rig, condition, timeout=3.):
 
 
 def goal(rig, operation, **kwargs):
+    if operation in ('target_grasp', 'approach_grasp', 'first_grasp'):
+        kwargs.setdefault('has_target_class', True)
+        kwargs.setdefault('target_class_id', 2)
     future = rig[1].send_goal_async(RobotTask.Goal(operation=operation, **kwargs))
     until(rig, future.done)
     handle = future.result()
@@ -64,7 +68,7 @@ def result(rig, handle, status=GoalStatus.STATUS_SUCCEEDED):
 @pytest.mark.parametrize('op,kwargs', [
     ('stop', {}), ('move', {'distance_m': -.01, 'speed_mps': .2}),
     ('turn', {'angle_deg': 5., 'speed_mps': .2}), ('claw', {'angle_deg': 45.}),
-    ('grasp', {}), ('discard', {})])
+    ('grasp', {})])
 def test_operations_finish_and_stop(rig, op, kwargs):
     n = rig[0]
     n.set_parameters([Parameter('track_width', value=.001),
@@ -96,15 +100,24 @@ def test_move_emits_reverse_and_cancel_holds(rig):
 def test_timeout_and_invalid_goals(rig):
     for op, kw in [('unknown', {}), ('move', {'speed_mps': math.nan}),
                    ('claw', {'angle_deg': 100.}), ('camera', {'angle_deg': 0.}),
-                   ('first_grasp', {})]:
+                   ('first_grasp', {'has_target_class': False})]:
         assert not goal(rig, op, **kw).accepted
     h = goal(rig, 'approach_grasp', timeout_sec=.1)
     assert 'timeout' in result(rig, h, GoalStatus.STATUS_ABORTED).message
 
 
 def command(n, **kw):
+    if n.action_api.first_id:
+        kw.setdefault('first_grasp_id', n.action_api.first_id)
+        kw.setdefault('class_id', n.action_api.goal.target_class_id if n.action_api.goal else 2)
     msg = AlignmentCommand(valid=True, valid_for_sec=.25, track_id=7, **kw)
     msg.header.stamp = n.get_clock().now().to_msg()
+    n.grip = GripperAngles(track_id=7, angles_ready=True, valid_for_sec=.25,
+        left_angle_rad=math.radians(n.left_claw), right_angle_rad=math.radians(n.right_claw))
+    n.grip.header.stamp = msg.header.stamp
+    n.opened_at = time.monotonic() - 1.
+    n.opening_angles = (n.left_claw, n.right_claw)
+    n.opening_track_id = 7
     n.command(msg)
 
 
@@ -135,60 +148,52 @@ def test_camera_requires_feedback_and_cancel_retains_target(rig):
     assert n.cam_target == 10.
 
 
-def test_first_task_correlates_clearance_and_formal_completion(rig):
+def test_target_task_transport_explicit_class_and_cancel(rig):
     n = rig[0]
-    n.task_mode = 'first_grasp'
-    n.set_parameters([Parameter('track_width', value=.001), Parameter('discard_distance_m', value=0.)])
-    first = FirstGraspTask()
-    rig[2].add_node(first)
+    selector = FirstGraspTask()
+    rig[2].add_node(selector)
     try:
-        h = goal(rig, 'first_grasp')
-        until(rig, lambda: first.first_id == n.action_api.first_id)
-        task_id = first.first_id
-        command(n, first_grasp_id=task_id + 1, grasp_request=True)
+        h = goal(rig, 'target_grasp', target_class_id=3)
+        until(rig, lambda: selector.first_id == n.action_api.first_id)
+        assert selector.target_class == 3
+        command(n, first_grasp_id=n.action_api.first_id + 1, grasp_request=True)
         assert n.state == 'track'
-        command(n, first_grasp_id=task_id, class_id=2, clearance=True, grasp_request=True)
-        until(rig, lambda: n.state == 'track')
-        assert not n.action_api.completed
-        command(n, first_grasp_id=task_id, class_id=0, grasp_request=True)
+        command(n, class_id=0, grasp_request=True)
+        assert n.state == 'track'
+        command(n, class_id=3, grasp_request=True)
         assert result(rig, h).success
-        until(rig, lambda: first.first_done)
-        h = goal(rig, 'first_grasp')
-        until(rig, lambda: first.first_id == n.action_api.first_id)
-        cancel = h.cancel_goal_async()
-        until(rig, cancel.done)
-        result(rig, h, GoalStatus.STATUS_CANCELED)
-        until(rig, lambda: first.first_done)
+        until(rig, lambda: not selector.task_active)
+        assert n.memory.data['grasps'][-1]['class_id'] == 3
     finally:
-        rig[2].remove_node(first)
-        first.destroy_node()
+        rig[2].remove_node(selector)
+        selector.destroy_node()
 
 
-def test_autonomous_and_legacy_topic_use_action_goals(rig):
-    from std_msgs.msg import Bool
+def test_discard_and_missing_class_are_rejected(rig):
+    for op in ('target_grasp', 'approach_grasp', 'first_grasp'):
+        assert not goal(rig, op, has_target_class=False).accepted
+        assert not goal(rig, op, target_class_id=-1).accepted
+    assert not goal(rig, 'discard').accepted
+    assert not goal(rig, 'grasp', discard_after=True).accepted
+
+
+def test_autonomous_requires_class(rig):
     n = rig[0]
-    n.set_parameters([Parameter('discard_enabled', value=False)])
+    class Timer:
+        def cancel(self): pass
+    n.auto_timer = Timer()
+    n.start_autonomous()
+    assert n.action_api.goal is None
+    n.set_parameters([Parameter('autonomous_target_class', value=4)])
     n.start_autonomous()
     until(rig, lambda: n.action_api.goal is not None)
-    assert n.action_api.goal.operation == 'approach_grasp'
-    command(n, aligned=True, grasp_request=True)
+    assert n.action_api.goal.target_class_id == 4
+    command(n, grasp_request=True)
     until(rig, lambda: not n.action_api.reserved)
     assert n.state == 'hold'
-    n.request_discard(Bool(data=True))
-    until(rig, lambda: n.action_api.goal is not None)
-    assert n.action_api.goal.operation == 'discard'
-    # Cancel by the action protocol even when the goal originated from a legacy topic.
-    from action_msgs.srv import CancelGoal
-    cancel_client = n.create_client(CancelGoal, 'robot/execute/_action/cancel_goal')
-    assert cancel_client.wait_for_service(timeout_sec=1.)
-    canceled = cancel_client.call_async(CancelGoal.Request())
-    until(rig, canceled.done)
-    until(rig, lambda: not n.action_api.reserved)
-    assert n.state == 'hold'
-    n.destroy_client(cancel_client)
 
 
-@pytest.mark.parametrize('operation', ['grasp', 'discard', 'align'])
+@pytest.mark.parametrize('operation', ['grasp', 'target_grasp', 'align'])
 def test_cancel_during_substage_and_stale_requests_do_not_restart(rig, operation):
     n = rig[0]
     n.set_parameters([Parameter('camera_servo', value=True)])
@@ -247,13 +252,13 @@ def test_memory_query_latched_context_and_independent_claw_cancel(rig):
                                 QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
     until(rig, lambda: bool(updates))
     assert updates[-1]['task']['status'] == 'completed'
-    h = goal(rig, 'discard')
+    h = goal(rig, 'target_grasp')
     cancel = h.cancel_goal_async()
     until(rig, cancel.done)
     result(rig, h, GoalStatus.STATUS_CANCELED)
     assert (n.left_claw, n.right_claw) == (0., 16.)
     assert n.memory.data['grasps'][-1]['status'] == 'completed'
-    assert n.memory.data['grasps'][-1]['disposition'] == 'discard_interrupted'
+    assert n.memory.data['grasps'][-1]['disposition'] == 'commanded_hold'
     assert n.memory.decision_context()['task']['status'] == 'canceled'
     n.destroy_subscription(sub)
     n.destroy_client(query)
@@ -268,46 +273,67 @@ def test_claw_action_does_not_change_long_term_closure_settings(rig):
     assert (n.left_claw, n.right_claw) == (0., 18.)
 
 
-def test_first_selector_uses_memory_as_well_as_current_images(rig):
-    import json
-    from block_interfaces.msg import FrameMetadata, Box
-    from std_msgs.msg import UInt64
+@pytest.mark.parametrize('ending', ['cancel', 'timeout'])
+def test_sweep_action_interruption_stops_and_records_without_grasp(rig, ending):
     n = rig[0]
-    first = FirstGraspTask()
+    h = goal(rig, 'target_grasp', timeout_sec=.15 if ending == 'timeout' else 10.)
+    msg = AlignmentCommand(valid=True, valid_for_sec=.25, track_id=7, class_id=2,
+        first_grasp_id=n.action_api.first_id, sweep_side=-1, obstacle_id=8,
+        obstacle_overlap=.8, forward_speed=.1)
+    msg.header.stamp = n.get_clock().now().to_msg()
+    n.command(msg)
+    assert n.sweep is not None and n.left_claw == -30.
+    if ending == 'cancel':
+        canceled = h.cancel_goal_async()
+        until(rig, canceled.done)
+    status = GoalStatus.STATUS_CANCELED if ending == 'cancel' else GoalStatus.STATUS_ABORTED
+    assert not result(rig, h, status).success
+    assert n.left_claw == -30.
+    assert n.memory.data['sweeps'][-1]['status'] == ('canceled' if ending == 'cancel' else 'timeout')
+    assert not n.memory.data['grasps'] and not n.memory.data['discards']
+
+
+def test_complete_target_sweep_through_real_node_topics(rig):
+    from block_interfaces.msg import FrameMetadata, Box
+    from block_perception.nodes import Selector, Filter, Alignment
+    from block_perception.gripper import Gripper
+    n = rig[0]
+    n.set_parameters_atomically([Parameter('sweep_duration_sec', value=.1),
+                                Parameter('sweep_tau_sec', value=.033)])
+    pipeline = [Selector(), Filter(), Alignment(), Gripper()]
+    for node in pipeline:
+        rig[2].add_node(node)
+    frames = []
+    sub = n.create_subscription(String, 'serial_tx', lambda msg: frames.append(msg.data), 10)
+    pub = n.create_publisher(FrameMetadata, 'tracks_meta', 10)
     try:
-        first.start_action(UInt64(data=123))
-        n.memory.begin_task('first_grasp', 123)
-        n.memory.begin_grasp(AlignmentCommand(first_grasp_id=123, class_id=0, track_id=3))
-        n.memory.complete_grasp()
-        first.remember(String(data=json.dumps(n.memory.decision_context())))
-        assert not first.memory_allows_selection()  # formal grasp completed; no duplicate selection
-        outputs = []
-        class Capture:
-            def publish(self, msg):
-                outputs.append(msg)
-        first.pub = Capture()
-        frame = FrameMetadata()
-        frame.width, frame.height = 640, 480
-        frame.boxes = [Box(track_id=3, class_id=0, x=300., y=200., width=40., height=40., observed=True)]
-        frame.header.stamp = first.get_clock().now().to_msg()
-        first.frame(frame)
-        assert not outputs[-1].valid  # visible target alone must not repeat a completed task
-        first.start_action(UInt64(data=124))
-        assert first.memory_allows_selection()  # old task cannot mark a new task completed
-        n.memory.begin_task('first_grasp', 124)
-        n.memory.begin_grasp(AlignmentCommand(first_grasp_id=124, class_id=2, track_id=4, clearance=True))
-        n.memory.complete_grasp()
-        n.memory.begin_discard()
-        first.remember(String(data=json.dumps(n.memory.decision_context())))
-        assert not first.memory_allows_selection()  # wait until the obstacle disposal finishes
-        n.memory.complete_discard()
-        first.remember(String(data=json.dumps(n.memory.decision_context())))
-        assert first.memory_allows_selection()  # clearance is not the formal grasp
-        frame.header.stamp = first.get_clock().now().to_msg()
-        first.frame(frame)
-        assert outputs[-1].valid and outputs[-1].class_id == 0
-        n.memory.finish_task('timeout', 'track')
-        first.remember(String(data=json.dumps(n.memory.decision_context())))
-        assert not first.memory_allows_selection()
+        h = goal(rig, 'target_grasp', target_class_id=2, timeout_sec=4.)
+        result_future = h.get_result_async()
+        deadline = time.monotonic() + 4.
+        next_frame = 0.
+        while not result_future.done() and time.monotonic() < deadline:
+            if time.monotonic() >= next_frame:
+                frame = FrameMetadata(width=640, height=480, boxes=[
+                    Box(track_id=7, class_id=2, observed=True, confidence=.9,
+                        x=280., y=304., width=80., height=80.),
+                    Box(track_id=8, class_id=1, observed=True, confidence=.9,
+                        x=280., y=360., width=80., height=80.)])
+                frame.header.stamp = n.get_clock().now().to_msg()
+                pub.publish(frame)
+                next_frame = time.monotonic() + .03
+            rig[2].spin_once(timeout_sec=.005)
+        assert result_future.done()
+        assert result_future.result().status == GoalStatus.STATUS_SUCCEEDED
+        assert result_future.result().result.track_id == 7
+        assert len(n.memory.data['sweeps']) == len(n.memory.data['grasps']) == 1
+        assert n.memory.data['sweeps'][0]['obstacle_id'] == 8
+        assert n.memory.data['grasps'][0]['class_id'] == 2
+        assert not n.memory.data['discards']
+        assert any(',-30.0,' in frame for frame in frames)
+        assert (n.left_claw, n.right_claw) == (0., 5.)
     finally:
-        first.destroy_node()
+        n.destroy_subscription(sub)
+        n.destroy_publisher(pub)
+        for node in pipeline:
+            rig[2].remove_node(node)
+            node.destroy_node()

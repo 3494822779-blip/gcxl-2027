@@ -1,6 +1,9 @@
 # 普通抓取任务
 
-完整逻辑、代码映射和 Action 用法见 **[项目功能与动作接口](../docs/project_actions.md)**。默认启动自动提交一次抓取 Action；`autonomous:=false` 等待外部 Goal。完成、取消或超时后停车保持，继续执行需提交新 Goal。
+> 目标抓取接口已更新：启动默认等待人工任务；`target_grasp`（以及 `approach_grasp`、`first_grasp`）必须显式提供 `has_target_class: true, target_class_id: <类别>`。自动运行使用 `autonomous:=true target_class:=<类别>`。清障采用单爪扫走一次，丢弃已停用。完整规则和当前命令以 [动作说明](../docs/project_actions.md) 为准。接口变更后须重建全部依赖包并重启节点。
+
+
+完整逻辑、代码映射和 Action 用法见 **[项目功能与动作接口](../docs/project_actions.md)**。默认启动等待外部 Goal；`autonomous:=true target_class:=<类别>` 自动执行一次指定类别抓取。完成、取消或超时后停车保持，继续执行需提交新 Goal。
 
 ROS 2 物块对准抓取视觉感知
 
@@ -113,7 +116,7 @@ ros2 param set /alignment bottom_target 0.9
 ros2 param set /alignment grasp_pitch -0.3   # 仅 camera_servo=true
 ```
 
-参数回调立即生效并检查非有限数、负方差、无效死区、越界的 `bottom_target`、颠倒的 pitch 区间。修改区间时中间状态也必须合法，需要同时更改时通过 `set_parameters_atomically` 服务提交。改动抓取参数会重新计算持续时间；已发出的抓取请求不会因为调参重复发出。参数不会自动持久化，确认标定后修改 `config/perception.yaml`。
+参数回调立即生效并检查非有限数、负方差、无效死区、越界的 `bottom_target`、颠倒的 pitch 区间。修改区间时中间状态也必须合法，需要同时更改时通过 `set_parameters_atomically` 服务提交。抓取就绪条件每周期重新检查，由执行器保证扫走、张爪和抓取阶段只执行一次。参数不会自动持久化，确认标定后修改 `config/perception.yaml`。
 
 ## 屏幕显示与记录
 
@@ -151,67 +154,17 @@ ctest --test-dir ros2_ws/build_gcxl/block_deepstream --output-on-failure
 
 输出 `/gripper/angles`（`GripperAngles`），包含时间戳、目标 ID、边界、建议角度、有效期和状态。该节点只计算建议；是否执行由 actuator 和动作状态决定。输入中断时输出失效状态，默认 `input_timeout=0.25` 秒。
 
-## 独立任务：首次抓取 class_0
+## 目标型抓取与单爪扫走
 
-首次抓取是独立的 `first_grasp` ROS 节点，任务状态、目标筛选与清障循环均位于
-`block_perception/first_grasp_task.py`。普通 `selector` 不包含此任务逻辑。
-
-独立启动任务及其依赖节点（替代普通 perception.launch.py；两套入口不要同时运行）：
+普通启动默认等待任务；`first_grasp.launch.py` 是同一选择逻辑的兼容入口，不再只选 class_0。
 
 ```bash
-ros2 launch block_perception first_grasp.launch.py serial:=true
+ros2 launch block_perception perception.launch.py serial:=true
+ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: target_grasp, has_target_class: true, target_class_id: 2}" --feedback
 ```
 
-相机、串口等参数沿用普通 launch；按实际输入设置。启动后任务处于等待状态，不自动抓取。
-单独触发：
-
-```bash
-ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: first_grasp}" --feedback
-```
-
-执行中重复触发被忽略。选择 class_0 框左右边缘之间、从上边缘延伸至画面顶部的区域，
-要求该区域与 class_1 框的交集面积占该 class_1 框面积的比例不超过
-`first_grasp.first_grasp_overlap`（默认 0，即不相交；可调为小正数允许少量重叠）。
-上边缘已出画的 class_0 不作为候选。优先选择无遮挡的合格 class_0。
-
-前方遮挡暂按横向相交且框下边缘更低判断；有遮挡时抓取最近的遮挡物并复用丢弃任务，
-丢弃结束后只使用新图像重新选目标，允许多次清障。清障抓取不计入首次正式抓取。
-无合格目标时停车等待；最终只以 class_0 作为正式目标，合拢后保持夹持并结束任务，
-不受普通抓取 `discard_enabled` 自动丢弃设置影响。清障则始终丢弃。
-`/task/grasp_finished` 发布各次动作完成信息（AlignmentCommand，含任务 ID 和 clearance）。
-完成是上位机动作计时结束，不代表传感器确认物块已夹住。
-
-该规则使用图像框近似前后关系，无法凭检测框保证真实夹爪范围内没有其他物块；
-需实车验证遮挡判断、检测漏检和抓取范围。重新编译 block_interfaces、block_perception 并
-重新 source 安装环境后使用新增话题及消息字段。普通 target/reset 不控制独立首次抓取任务。
-
-## 丢弃任务的底盘参数与标定
-
-独立丢弃任务执行：逆时针转 90° → 夹爪开到 90° → 后退 x → 夹爪再次开到 90° → 前进 x → 顺时针转 90° → 停车。
-参数位于 [`config/perception.yaml`](src/block_perception/config/perception.yaml) 的 `actuator.ros__parameters`：
-
-| 参数 | 单位 | 用途 |
-|---|---|---|
-| `track_width` | m | 左右驱动轮间距，用于计算原地转 90° 所需时间，须测量实车 |
-| `wheel_speed_scale` | 下位机指令值 / (m/s) | 下发轮速值 = 轮速（m/s）× 此系数，须匹配下位机接口 |
-| `max_wheel_speed` | m/s | 每侧轮速上限 |
-| `min_turn_speed` | m/s | 最小转向轮速，须标定到能可靠转动 |
-| `discard_distance_m` | m | x，后退和返回前进使用同一距离 |
-| `discard_speed_mps` | m/s | 丢弃任务的后退、前进速度，受最大轮速限制 |
-| `discard_turn_speed_mps` | m/s | 原地旋转的每侧轮速，受最小转向轮速及最大轮速限制 |
-| `claw_settle_sec` | s | 合拢及每次开爪后的等待时间 |
-| `discard_enabled` | 布尔值 | 普通抓取完成后是否自动调用丢弃任务；不影响独立触发 |
-
-方向约定：`lw` 对应左轮，`rw` 对应右轮；两轮正值均表示前进。从车顶向下看，左轮负、右轮正为逆时针，左轮正、右轮负为顺时针。实车运行前需确认轮子映射和正负方向。
-
-若下位机接收实际轮速，轮径、减速比和编码器参数由下位机处理；若接收的是 PWM，则必须实测“指令值与实际速度”的关系来标定 `wheel_speed_scale`。PWM 与速度通常并非固定比例，负载、电池电压及地面变化会影响结果。
-
-当前底盘没有向任务提供里程计或航向反馈，使用开环计时：直行时间为 `x / 实际下发速度`；原地转 90° 的时间为 `π × track_width / (4 × 每侧实际下发轮速)`。这里的速度是限幅后的指令速度，并非反馈测得的真实速度。先校准直行距离，再验证两个方向的 90° 转角；轮胎打滑及控制周期也会造成误差。若需要准确返回原位置和朝向，应增加编码器距离与 IMU 航向反馈，并将任务改为闭环到位判定。
-
-执行节点及串口桥运行时，可独立触发：
-
-```bash
-ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: discard}" --feedback
-```
-
-详细参数与任务复用接口见 [`docs/parameters.md`](../docs/parameters.md)。
+必须显式指定类别，没有默认类别。`approach_grasp` 和 `first_grasp` 是相同流程的兼容名称，同样要求类别。
+选中指定类别中下边缘最低的真实目标后保持编号；只处理前方横向交集最大的障碍，单爪内收 −30°，继续接近正式目标并叠加指数衰减的反向转向偏置。
+每个目标只扫一次，扫完恢复张爪并抓取原目标；丢失原编号时停车等待，不重新选目标。
+抓取结束保持夹持、停车并发出相机回正指令。`discard` 和 `discard_after: true` 已停用并拒绝执行。
+详细参数、取消和记忆接口见 [动作说明](../docs/project_actions.md)。

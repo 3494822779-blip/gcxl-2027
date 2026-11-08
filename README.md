@@ -1,5 +1,8 @@
 # 物块抓取任务
 
+> 目标抓取接口已更新：启动默认等待人工任务；`target_grasp`（以及 `approach_grasp`、`first_grasp`）必须显式提供 `has_target_class: true, target_class_id: <类别>`。自动运行使用 `autonomous:=true target_class:=<类别>`。清障采用单爪扫走一次，丢弃已停用。完整规则和当前命令以 [动作说明](docs/project_actions.md) 为准。接口变更后须重建全部依赖包并重启节点。
+
+
 完整功能梳理、每个动作的逻辑/代码映射、ROS 2 Action 调用与取消说明见 **[项目功能与动作接口](docs/project_actions.md)**。动作统一使用 `/robot/execute`（`block_interfaces/action/RobotTask`）；启动时加 `autonomous:=false` 可等待手动 Goal。
 
 项目提供普通抓取和首次抓取两个任务入口。ROS 2 环境、编译及完整参数说明见 [ROS 工作区说明](ros2_ws/README.md)。新增接口后需重新编译 `block_interfaces`、`block_perception`，并重新 source 安装环境、重启相关节点。
@@ -21,38 +24,20 @@
 
 此脚本会自动检查并提示配置MAXN功率模式。首次使用建议按提示完成所有优化步骤。
 
-## 独立任务：首次抓取 class_0
+## 目标型抓取与单爪扫走
 
-首次抓取由独立 ROS 节点 `first_grasp` 管理，代码位于 [first_grasp_task.py](ros2_ws/src/block_perception/block_perception/first_grasp_task.py)。它独立维护目标筛选、清障循环和完成状态，复用底层对准、抓取及丢弃动作；普通 `selector` 不包含此任务逻辑。
-
-### 启动与独立触发
-
-启动首次抓取任务及其依赖节点：
+普通启动默认等待任务；`first_grasp.launch.py` 是同一选择逻辑的兼容入口，不再只选 class_0。
 
 ```bash
-ros2 launch block_perception first_grasp.launch.py serial:=true
+ros2 launch block_perception perception.launch.py serial:=true
+ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: target_grasp, has_target_class: true, target_class_id: 2}" --feedback
 ```
 
-相机和串口参数按实际设备配置；图像固定走原生 NVMM 感知链路。该入口替代普通 `perception.launch.py`，两套入口不要同时运行，以免同时控制底盘和夹爪。
-
-启动后处于等待状态，不自动抓取。在另一个已加载 ROS 和工作区环境的终端中独立触发：
-
-```bash
-ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: first_grasp}" --feedback
-```
-
-执行中重复触发会被忽略；任务完成后可再次触发。普通 `/target/reset` 不控制此独立任务。
-
-### 执行规则
-
-1. 首次正式抓取目标必须且只能是 **class_0**。
-2. 判定区域为 class_0 检测框左右边缘之间、从框的上边缘延伸到画面顶部的区域。选择区域内没有 class_1 框或仅少量相交的目标，优先选择无遮挡目标。
-3. 有前方物块遮挡时，先普通抓取遮挡物，再执行丢弃；丢弃结束后使用新图像重新检测、选目标，可重复清障。清障抓取不计入首次正式抓取。
-4. 无合格目标时停车等待。正式抓取 class_0 后保持夹持并结束任务，不自动丢弃。
-
-`first_grasp` 节点参数 `first_grasp_overlap` 控制允许的相交比例：交集面积除以对应 class_1 框面积，默认 `0.0`（不相交），取值范围 `[0, 1)`。配置位于 [perception.yaml](ros2_ws/src/block_perception/config/perception.yaml)。
-
-前方遮挡目前按框横向相交且下边缘更靠近画面底部判断。该规则是图像几何近似，实际抓取范围及遮挡关系仍需实车验证。`/task/grasp_finished` 发布动作完成信息；完成表示上位机动作计时结束,不代表传感器确认已夹住物块。
+必须显式指定类别，没有默认类别。`approach_grasp` 和 `first_grasp` 是相同流程的兼容名称，同样要求类别。
+选中指定类别中下边缘最低的真实目标后保持编号；只处理前方横向交集最大的障碍，单爪内收 −30°，继续接近正式目标并叠加指数衰减的反向转向偏置。
+每个目标只扫一次，扫完恢复张爪并抓取原目标；丢失原编号时停车等待，不重新选目标。
+抓取结束保持夹持、停车并发出相机回正指令。`discard` 和 `discard_after: true` 已停用并拒绝执行。
+详细参数、取消和记忆接口见 [动作说明](docs/project_actions.md)。
 
 ## 性能优化
 

@@ -12,6 +12,12 @@ float64 x
 float64 y
 builtin_interfaces/Time last_observed
 
-# Nonzero identifies a first-grasp task; clearance grabs must be discarded.
+# Nonzero identifies a target-grasp task. clearance is deprecated and always false.
 uint64 first_grasp_id
 bool clearance
+
+# Obstacle metadata relative to the locked formal target. -1=left, +1=right, 0=none.
+uint64 obstacle_id
+int8 sweep_side
+float64 obstacle_overlap
+bool obstacle_near

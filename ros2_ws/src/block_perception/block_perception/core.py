@@ -128,3 +128,21 @@ def validate(values):
 
     if values.get('discard_enabled') and not values['claw_init_deg'] <= 90. <= values['claw_max_deg']:
         raise ValueError('discard requires 90 degrees within claw limits')
+
+    if values.get('discard_enabled'):
+        raise ValueError('discard is disabled')
+    for name in ('sweep_tau_sec', 'sweep_duration_sec', 'sweep_max_yaw_rate', 'sweep_near_multiplier'):
+        if name in values and values[name] <= 0:
+            raise ValueError(f'{name} must be positive')
+    for name in ('sweep_weight', 'sweep_overlap'):
+        if name in values and not 0 <= values[name] <= 1:
+            raise ValueError(f'{name} must be in [0, 1]')
+    if 'reverse_speed' in values and values['reverse_speed'] < 0:
+        raise ValueError('reverse_speed must be nonnegative')
+    if 'claw_min_deg' in values and not values['claw_min_deg'] <= values['sweep_claw_deg'] < 0 <= values['claw_init_deg']:
+        raise ValueError('sweep angle must be negative and within claw limits')
+    if 'autonomous_target_class' in values and values['autonomous_target_class'] < -1:
+        raise ValueError('autonomous_target_class must be -1 (unset) or a nonnegative class')
+
+    if 'claw_open_pitch_deg' in values and not values['cam_min_deg'] <= values['claw_open_pitch_deg'] <= values['cam_max_deg']:
+        raise ValueError('claw_open_pitch_deg must be within camera limits')

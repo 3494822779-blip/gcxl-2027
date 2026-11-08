@@ -18,6 +18,9 @@ class Capture:
 def nodes():
     rclpy.init()
     instances = [Selector(), Filter(), Alignment()]
+    instances[2].set_parameters_atomically([Parameter('bottom_target', value=.9),
+        Parameter('deadzone_y', value=.2), Parameter('grasp_pitch', value=-.26),
+        Parameter('pitch_gain', value=-.5)])
     for n in instances: n.pub = Capture()
     yield instances
     for n in instances: n.destroy_node()
@@ -82,7 +85,7 @@ def test_grasp_one_shot_and_dynamic_parameters(nodes):
     assert alignment.pub.messages[-1].grasp_request
     alignment.tick()
     out = alignment.pub.messages[-1]
-    assert not out.grasp_request and out.yaw_rate == out.forward_speed == 0   # one shot, then frozen
+    assert out.grasp_request and out.yaw_rate == out.forward_speed == 0  # readiness persists until executor accepts
 
 
 def test_fixed_camera_drives_forward_until_bottom_edge_in_band(nodes):
@@ -98,7 +101,7 @@ def test_fixed_camera_drives_forward_until_bottom_edge_in_band(nodes):
     target_at(alignment, 490.)    # predicted bottom edge past the image bottom: too close, stop (no reverse)
     alignment.tick()
     out = alignment.pub.messages[-1]
-    assert out.forward_speed == 0 and out.reason == 'too_close' and not out.aligned
+    assert out.forward_speed == -.1 and out.reason == 'too_close' and not out.aligned
 
 
 def test_yaw_gain_fades_as_the_block_gets_closer(nodes):
@@ -162,7 +165,7 @@ def test_camera_servo_mode_needs_pitch_and_drives_forward_until_it_is_down(nodes
     assert alignment.pub.messages[-1].forward_speed > 0
     assert alignment.pub.messages[-1].pitch_rate < 0  # camera follows it downward
     target_at(alignment, 432.)
-    pitch = JointState(name=['camera_pitch'], position=[-.2])
+    pitch = JointState(name=['camera_pitch'], position=[-.26])
     pitch.header.stamp = alignment.get_clock().now().to_msg()
     alignment.joints(pitch)
     alignment.tick()
@@ -186,91 +189,3 @@ def test_selector_follows_block_after_tracker_id_change(nodes):
     again = send(12, [Box(track_id=22, **block)])
     assert again.observed and again.track_id == 22
     assert selector.set_parameters_atomically([Parameter('rebind_iou', value=2.)]).successful is False
-
-
-
-
-def test_first_task_independent_trigger_clearance_and_completion(first_nodes):
-    from block_interfaces.msg import AlignmentCommand
-    selector, filt, alignment = first_nodes
-    assert selector.first_id == 0
-    selector.start_action(UInt64(data=selector.get_clock().now().nanoseconds))
-    task_id = selector.first_id
-    # Duplicate external goals are rejected by ActionAPI (covered in test_actions).
-    assert selector.first_id == task_id
-    frame = FrameMetadata()
-    frame.width, frame.height = 640, 480
-    frame.boxes = [Box(track_id=1, class_id=0, x=300., y=200., width=40., height=40., observed=True),
-                   Box(track_id=2, class_id=2, x=300., y=300., width=40., height=40., observed=True)]
-    frame.header.stamp = selector.get_clock().now().to_msg()
-    selector.frame(frame)
-    target = selector.pub.messages[-1]
-    assert target.track_id == 2 and target.clearance and target.first_grasp_id == task_id
-    request = AlignmentCommand(first_grasp_id=task_id, track_id=2, clearance=True, grasp_request=True)
-    selector.first_command(request)
-    selector.reset(Bool(data=True))
-    assert selector.first_busy is not None
-    request.header.stamp = selector.get_clock().now().to_msg()
-    selector.first_finished(request)
-    assert selector.first_busy is None and not selector.first_done
-    frame.boxes = frame.boxes[:1]
-    frame.header.stamp = selector.get_clock().now().to_msg()
-    selector.frame(frame)
-    target = selector.pub.messages[-1]
-    assert target.track_id == 1 and not target.clearance
-    request.track_id, request.clearance = 1, False
-    selector.first_command(request)
-    request.header.stamp = selector.get_clock().now().to_msg()
-    selector.first_finished(request)
-    assert selector.first_done
-    frame.header.stamp = selector.get_clock().now().to_msg()
-    selector.frame(frame)
-    assert not selector.pub.messages[-1].valid
-
-
-def test_first_metadata_reaches_grasp_command_and_hazard_stops(first_nodes):
-    selector, filt, alignment = first_nodes
-    selector.start_action(UInt64(data=selector.get_clock().now().nanoseconds))
-    frame = FrameMetadata()
-    frame.width, frame.height = 640, 480
-    frame.boxes = [Box(track_id=1, class_id=0, x=300., y=392., width=40., height=40., observed=True)]
-    frame.header.stamp = selector.get_clock().now().to_msg()
-    selector.frame(frame)
-    filt.target(selector.pub.messages[-1])
-    alignment.target(filt.pub.messages[-1])
-    alignment.tick()
-    cmd = alignment.pub.messages[-1]
-    assert cmd.grasp_request and cmd.first_grasp_id == selector.first_id
-    assert not cmd.clearance and cmd.class_id == 0
-    # A fresh hazard frame must not be converted to a predicted approach target.
-    frame.boxes.append(Box(track_id=2, class_id=1, x=310., y=100., width=40., height=40., observed=True))
-    frame.header.stamp = selector.get_clock().now().to_msg()
-    selector.frame(frame)
-    filt.target(selector.pub.messages[-1])
-    alignment.target(filt.pub.messages[-1])
-    alignment.tick()
-    assert not alignment.pub.messages[-1].valid
-    assert alignment.pub.messages[-1].forward_speed == 0.
-
-
-@pytest.fixture
-def first_nodes():
-    from block_perception.first_grasp_task import FirstGraspTask
-    rclpy.init()
-    instances = [FirstGraspTask(), Filter(), Alignment()]
-    for n in instances:
-        n.pub = Capture()
-    yield instances
-    for n in instances:
-        n.destroy_node()
-    rclpy.shutdown()
-
-
-def test_independent_task_idle_until_trigger_and_normal_selector_has_no_task(first_nodes):
-    assert not hasattr(Selector, 'start_first')
-    task = first_nodes[0]
-    frame = FrameMetadata()
-    frame.header.stamp = task.get_clock().now().to_msg()
-    frame.boxes = [Box(track_id=1, class_id=0, x=100., y=100., width=40., height=40., observed=True)]
-    task.frame(frame)
-    assert not task.pub.messages[-1].valid

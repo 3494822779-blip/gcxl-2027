@@ -15,8 +15,8 @@ def timestamp():
 class TaskMemory:
     def __init__(self):
         self.session_id = uuid.uuid4().hex
-        self.data = {'version': 1, 'tasks': [], 'grasps': [], 'discards': []}
-        self.task = self.grasp = self.discard = None
+        self.data = {'version': 1, 'tasks': [], 'grasps': [], 'discards': [], 'sweeps': []}
+        self.task = self.grasp = self.discard = self.sweep = None
         self.held = {'state': 'unknown', 'grasp_id': None, 'physical_confirmed': False}
         self.revision = 0
 
@@ -32,8 +32,20 @@ class TaskMemory:
     def begin_task(self, operation, first_grasp_id=0):
         self.task = self._record('tasks', operation=operation, first_grasp_id=first_grasp_id,
                                  phase='starting', first_formal_completed=False, clearance_count=0)
-        self.grasp = self.discard = None
+        self.grasp = self.discard = self.sweep = None
         self._changed()
+
+    def begin_sweep(self, track_id, class_id, obstacle_id, side):
+        self.uncertain_hold('sweep_claw_command')
+        self.sweep = self._record('sweeps', task_id=self.task['id'] if self.task else None,
+            track_id=track_id, class_id=class_id, obstacle_id=obstacle_id,
+            side='left' if side < 0 else 'right', phase='sweeping', physical_confirmed=False)
+        self._changed()
+
+    def complete_sweep(self):
+        if self.sweep is not None and self.sweep['status'] == 'running':
+            self.sweep.update(status='completed', finished_at=timestamp())
+            self._changed()
 
     def begin_grasp(self, target=None, left_deg=0., right_deg=0.):
         if self.grasp is not None and self.grasp['status'] == 'running':
@@ -106,7 +118,7 @@ class TaskMemory:
             return
         self.task.update(status=status, phase=phase, reason=reason, finished_at=timestamp())
         interrupted_motion = False
-        for record in (self.grasp, self.discard):
+        for record in (self.grasp, self.discard, self.sweep):
             if record is not None and record['status'] == 'running':
                 record.update(status=status if status != 'completed' else 'interrupted',
                               phase=phase, reason=reason, finished_at=timestamp())
@@ -123,6 +135,7 @@ class TaskMemory:
     def decision_context(self):
         return copy.deepcopy(dict(version=1, session_id=self.session_id, revision=self.revision,
                                   task=self.task, held=self.held,
+                                  latest_sweep=self.data['sweeps'][-1] if self.data['sweeps'] else None,
                                   latest_grasp=self.data['grasps'][-1] if self.data['grasps'] else None,
                                   latest_discard=self.data['discards'][-1] if self.data['discards'] else None,
                                   unresolved_tasks=[t for t in self.data['tasks'] if t['status'] in

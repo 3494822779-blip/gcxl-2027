@@ -1,6 +1,6 @@
 # 参数说明
 
-动作 Goal、取消、超时和代码映射见 [项目功能与动作接口](project_actions.md)。`autonomous`（默认 true）和 `task_mode` 是 actuator 启动参数，由 launch 传入；运行中只读。显式 `grasp/approach_grasp` Goal 的 `discard_after` 覆盖普通自动丢弃设置。
+动作 Goal、取消、超时和代码映射见 [项目功能与动作接口](project_actions.md)。`autonomous`（默认 false）和 `task_mode` 是 actuator 启动参数，由 launch 传入；运行中只读。目标型抓取必须显式指定类别；`discard_after: true` 和丢弃动作均被拒绝。
 
 配置文件：`ros2_ws/src/block_perception/config/perception.yaml`。每个节点只读与自己同名的小节。
 改完 yaml 要重新构建（安装目录里是副本）：
@@ -27,7 +27,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 
 ## selector（目标选择与锁定，在线可调）
 
-锁定的 ID 消失后，如果追踪器给同一个物块换了新 ID（物块贴到画面边缘时出现过），锁定会跟过去。
+下列重新绑定参数只用于单独 align。目标型抓取严格保持原编号，编号丢失时停车等待，不重新绑定。
 
 | 参数 | 默认 | 单位 | 说明 |
 |---|---|---|---|
@@ -40,22 +40,22 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 |---|---|---|---|
 | `camera_servo` | false | 开关 | 相机俯仰舵机开关。**须与 actuator 一致**。false=相机固定，只靠底盘前进把下边缘带进目标带；true=舵机俯仰对准 |
 | `deadzone_x` | 0.04 | 归一化 [0,1) | 水平死区。`error_x=(框中心x−W/2)/(W/2)`，正=目标在右 |
-| `deadzone_y` | 0.2 | 归一化 [0,1) | 垂直死区。`error_y=(下边缘y−bottom_target·H)/(H/2)`，正=下边缘偏下。0.2 即目标线上下各 10% 画面高度 |
-| `bottom_target` | 0.9 | 画面高度比例 (0,1] | 下边缘目标位置。0.9±0.1 即画面下部 20% |
-| `forward_speed` | 0.5 | m/s | 舵机关：下边缘在目标带上方时前进，带下方只停车，不倒车。舵机开：相机没低到 `grasp_pitch` 时前进 |
+| `deadzone_y` | 0.1 | 归一化 [0,1) | 垂直死区。`error_y=(下边缘y−bottom_target·H)/(H/2)`，正=下边缘偏下。0.1 即目标线上下各 5% 画面高度 |
+| `bottom_target` | 0.8 | 画面高度比例 (0,1] | 下边缘目标位置。当前目标带约为画面高度 75%～85% |
+| `forward_speed` | 0.5 | m/s | 舵机关：下边缘在目标带上方时前进，带下方且居中时以 reverse_speed 倒退。舵机开：相机没低到 `grasp_pitch` 时前进 |
 | `forward_max_error_x` | 0.3 | 归一化 | 水平偏差超过此值时不前进，先转向 |
 | `grasp_error_x` | 0.15 | 归一化 | 物块下边缘到达目标线时的水平死区。水平死区按距离从 `deadzone_x`（远）线性放宽到此值（近），转向和抓取判定共用 |
 | `yaw_near_weight` | 0.2 | [0,1] | 转向增益的距离权重：远处为 1（全增益，前期转到位），随下边缘接近目标线线性降到此值。1=不衰减，0=到线时不再转向 |
 | `yaw_center_weight` | 0.3 | [0,1] | 转向增益的偏离权重下限。偏离权重 = `max(yaw_center_weight, min(1, \|error_x\|/yaw_full_error_x))`，目标靠近画面中心时增益只剩此比例。1=不按偏离衰减 |
 | `yaw_full_error_x` | 0.5 | 归一化 (0,1] | `\|error_x\|` 达到此值及以上时偏离权重为 1（全增益），以内线性过渡 |
 | `yaw_gain` | −2.0 | rad/s 每单位误差 | 负值：目标在右时左轮比右轮快，车向右转。已实测 `lw`=左轮、正=前进；右轮待确认 |
-| `pitch_gain` | −0.5 | rad/s 每单位误差 | 仅舵机开。**符号要标定**：下边缘偏下时相机应低头（角度减小） |
+| `pitch_gain` | 1.5 | rad/s 每单位误差 | 仅舵机开。**符号要标定**：下边缘偏下时相机应低头（角度增大） |
 | `max_yaw_rate` | 2.0 | rad/s | 转向限幅。原地转向时每侧轮速 = yaw × `track_width`/2 × `wheel_speed_scale`，默认满幅 ±200 |
 | `max_pitch_rate` | 0.2 | rad/s | 仅舵机开。俯仰限幅，约 11°/s |
-| `grasp_pitch` | −0.26 | rad | 仅舵机开。夹爪触发角（约 −15°）：前进中相机持续低头，到达此角度并稳定后触发夹爪。**须与 actuator 的 `grasp_pitch_deg` 同一角度**，且须在相机可达范围内；按实际抓取姿态标定 |
+| `grasp_pitch` | 0.6981317 | rad | 仅舵机开。夹爪触发角（40°）：位置及角度到位、真实观测有效即可请求合爪。**须与 actuator 的 `grasp_pitch_deg` 同一角度**，且须在相机可达范围内；按实际抓取姿态标定 |
 | `pitch_timeout` | 0.25 | 秒 | 仅舵机开。俯仰反馈过期判定 |
 | `input_timeout` | 0.25 | 秒 | 目标过期判定 |
-| `hold_seconds` | 0.3 | 秒 | 保留参数；当前代码满足 ready 条件立即发一次请求，不使用此等待时间 |
+| `hold_seconds` | 0.3 | 秒 | 保留参数；当前代码每周期按 ready 条件发布请求，不使用此等待时间 |
 | `pitch_joint` | camera_pitch | | 仅舵机开。`camera/joint_states` 中的关节名 |
 
 ## gripper（框边缘 → 夹爪角，在线可调）
@@ -84,41 +84,43 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `wheel_speed_scale` | 1000 | | 下位机收到的轮速原始值 = m/s × 系数（0.5 m/s → 500） |
 | `max_wheel_speed` | 0.5 | m/s | 轮速限幅，×`wheel_speed_scale` 即下位机收到的上限 |
 | `min_turn_speed` | 0.1 | m/s | 有转向指令时每侧轮子的转向分量至少这么大，避免小偏差时左右轮差太小、电机不动；0=关闭 |
-| `cam_min_deg` | −15.0 | 度 | 仅舵机开。相机角度指令下限（负=低头）。**按机械极限改**（本机舵机最低 −15°） |
-| `cam_max_deg` | 30.0 | 度 | 仅舵机开。相机角度指令上限（正=抬头） |
-| `grasp_pitch_deg` | −15.0 | 度 | 仅舵机开。抓取时相机先低头到的目标角（0=回正，负=低头），**到位后夹爪才合拢**。须在 `[cam_min_deg, cam_max_deg]` 内，须与 alignment 的 `grasp_pitch` 同一角度（deg = rad×180/π） |
-| `grasp_pitch_tol` | 0.03 | rad | 仅舵机开。相机到达 `grasp_pitch_deg` 的到位容差，约 1.7° |
+| `cam_min_deg` | 0.0 | 度 | 相机回正，实际范围按机械极限标定 |
+| `cam_max_deg` | 90.0 | 度 | 相机角度上限；正角低头 |
+| `grasp_pitch_deg` | 40.0 | 度 | 仅舵机开。抓取时相机先低头到的目标角（0=回正，正=低头），**到位后夹爪才合拢**。须在 `[cam_min_deg, cam_max_deg]` 内，须与 alignment 的 `grasp_pitch` 同一角度（deg = rad×180/π） |
+| `grasp_pitch_tol` | 0.0296706 | rad | 仅舵机开。抓取下限容差，约 1.7°：反馈 ≥ grasp_pitch_deg − 容差即可，超过阈值允许抓取；手动 camera 动作仍使用双向到位容差 |
 | `claw_init_deg` / `claw_max_deg` | 0.0 / 90.0 | 度 | 同 gripper |
 | `left_claw_close_deg` | 0.0 | 度 | 左夹爪抓取闭合角，长期配置，须在 `[claw_init_deg, claw_max_deg]` |
-| `right_claw_close_deg` | 0.0 | 度 | 右夹爪抓取闭合角，暂定 0°，可单独调整；范围同左侧 |
+| `right_claw_close_deg` | 5.0 | 度 | 右夹爪抓取闭合角，当前 5°，可单独调整；范围同左侧 |
 | `pitch_home` | 0.0 | rad | 仅舵机开。抓取后相机回正的初始角 |
 | `pitch_home_tol` | 0.03 | rad | 仅舵机开。回正到位容差，约 1.7° |
-| `claw_settle_sec` | 0.5 | 秒 | 夹爪合拢及丢弃流程每次张开后的等待时间 |
+| `claw_settle_sec` | 0.5 | 秒 | 视觉张爪、合爪及手动夹爪的等待时间 |
 | `pitch_timeout` | 0.25 | 秒 | 仅舵机开。俯仰反馈过期判定 |
 | `pitch_joint` | camera_pitch | | 仅舵机开。发布到 `camera/joint_states` 的关节名 |
 
-## 独立丢弃任务
+## 目标型抓取与扫走参数
 
-`block_perception/discard.py` 的 `DiscardTask` 不依赖 ROS，可在不同业务流程中创建并周期调用 `step(now)`，输出左右轮速（m/s）及夹爪角度（度），`done` 表示完成。
-顺序：逆时针 90° → 张开 90°并等待 → 后退 x → 再次张开 90°并等待 → 前进 x → 顺时针 90° → 停车，夹爪保持 90°。
-当前没有底盘里程计或航向反馈，转角按轮距/轮速计时，距离按速度计时，实车需标定；阶段之间停车，定时精度约为一个控制周期（50 ms）。
+所有扫走参数位于 actuator 小节；每次扫走开始时固定本次内收角度、转向权重和衰减时间。
 
-在 `config/perception.yaml` 的 `actuator.ros__parameters` 设置：
-
-| 参数 | 默认 | 说明 |
+| 参数 | 当前值 | 说明 |
 |---|---|---|
-| `discard_enabled` | true | 仅控制抓取完成后是否自动调用；手动调用不受此开关影响 |
-| `discard_distance_m` | 0.2 | x，单位米，后退和前进使用同一距离，可为 0 |
-| `discard_speed_mps` | 0.1 | 直行速度，m/s，必须大于 0 |
-| `discard_turn_speed_mps` | 0.17 | 原地转向每轮速度，m/s，受最小转向速度和最大轮速限制 |
+| `autonomous_target_class` | −1 | 未指定；启动自动抓取必须通过 launch 的 target_class 明确指定非负类别 |
+| `claw_open_pitch_deg` | 20° | 相机实际反馈达到阈值时按当前目标宽度张爪一次；应设在抓取角度之前，之后保持开度 |
+| `claw_min_deg` | −30° | 扫走和手动夹爪下限，不影响普通张爪起点 |
+| `sweep_claw_deg` | −30° | 单侧内收角度 |
+| `sweep_overlap` | 0.5 | 横向交集 / 目标宽度，严格超过才加入转向偏置 |
+| `sweep_weight` | 0.2 | 初始权重 |
+| `sweep_near_multiplier` | 2.0 | 两框有实际面积重叠时的权重倍数 |
+| `sweep_max_yaw_rate` | 1.0 rad/s | 权重乘此值产生朝障碍反方向的偏置 |
+| `sweep_tau_sec` | 0.33 秒 | 指数衰减时间常数 |
+| `sweep_duration_sec` | 1.0 秒 | 累计有效目标控制时间，结束偏置归零 |
+| `max_yaw_rate` | 2.0 rad/s | actuator 合成视觉转向与偏置后的上限 |
+| `discard_enabled` | false | 兼容字段；true 被拒绝 |
+| `discard_speed_mps` | 0.1 m/s | 兼容命名，仍用作手动 move 默认速度 |
+| `discard_turn_speed_mps` | 0.17 m/s | 兼容命名，仍用作手动 turn 默认每轮速度 |
 
-独立触发（需要 actuator 与串口桥正在运行）：
+丢弃运行入口全部停用。`discard.py` 仅保留旧算法以兼容历史测试，不再接入执行器。`discard_distance_m` 不参与目标抓取。
 
-```bash
-ros2 topic pub --once /actuator/discard std_msgs/msg/Bool '{data: true}'
-```
-
-允许在视觉跟踪阶段或上一次任务完成后触发；抓取闭合中及丢弃执行中忽略重复触发。任务完成后停车，不自动恢复视觉跟踪。执行时优先使用任务指令，不受视觉指令覆盖；每次启动快照距离、速度和等待时间，中途调参下次生效。可通过 `DiscardTask.phase` 查看阶段。此入口由 actuator 统一下发串口，避免多个节点争用执行器。
+alignment 新增 `reverse_speed=0.1 m/s` 和 `grasp_pitch_tol=0.0296706 rad`；相机关闭时过近且居中允许倒退。`hold_seconds` 保留兼容但不延迟抓取请求。目标位置、角度和真实观测每周期重新检查，执行器完成扫走及单次张爪等待后才允许抓取。张爪后宽度变化不会重新张爪或重置等待；相机关闭时用目标进入目标带作为单次张爪条件。
 
 ## filter（卡尔曼滤波，在线可调）
 
@@ -171,7 +173,7 @@ left_claw_close_deg: 0.0
 right_claw_close_deg: 0.0
 ```
 
-这是长期保留的配置，普通、原地、清障和首次正式抓取均使用它。一次抓取开始时固定本次使用的角度；动作中修改参数不会改变正在执行的合爪目标。临时 `claw` 动作和丢弃张爪不会覆盖闭合配置。
+这是长期保留的配置，目标型和原地抓取均使用它。一次抓取开始时固定本次使用的角度；动作中修改参数不会改变正在执行的合爪目标。临时 `claw` 动作和扫走不会覆盖闭合配置。
 
 旧的 `claw_close_deg` 已拆分为以上两个字段，自定义 YAML 也应更新。`ros2 param set` 只修改本次进程的参数，不会自动写回文件。长期修改请编辑 YAML，然后在项目根目录执行：
 
@@ -185,4 +187,4 @@ source install_gcxl/setup.bash
 重启节点后读取新的配置。记忆与配置分开：记忆只存在本次运行内存里，重启清空。
 `/robot/memory`（`std_msgs/String`，JSON）提供最新决策状态，晚加入的订阅者也能收到；
 `/robot/memory/get`（`std_srvs/Trigger`）返回 JSON 完整历史。
-状态包含任务、最近抓取/丢弃、夹持指令状态和中断记录，所有结果均不代表物理夹持确认。
+状态包含任务、最近抓取/扫走（旧丢弃字段保留兼容）、夹持指令状态和中断记录，所有结果均不代表物理夹持确认。

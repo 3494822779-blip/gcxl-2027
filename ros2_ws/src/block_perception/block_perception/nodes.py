@@ -7,12 +7,13 @@ import time
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, DurabilityPolicy
 from rclpy.signals import SignalHandlerOptions
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Bool
 from sensor_msgs.msg import JointState
-from block_interfaces.msg import FrameMetadata, Target, AlignmentCommand
+from block_interfaces.msg import FrameMetadata, Target, AlignmentCommand, TargetTask
+from .first_grasp import candidates, obstacle_for
 from .core import Lock, CVFilter, rate, validate
 from .debug_log import DebugLog
 
@@ -83,26 +84,50 @@ class ConfigNode(Node):
 
 
 class Selector(ConfigNode):
-    def __init__(self):
-        super().__init__('selector')
+    def __init__(self, name='selector'):
+        super().__init__(name)
         self.configure(dict(rebind_iou=0.3, rebind_timeout=3.0))
         self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
+        self.first_id = 0
+        self.target_class = None
+        self.task_active = False
+        self.last_task_id = 0
         self.last_stamp = None
+        self.create_subscription(TargetTask, 'task/target_grasp', self.task_request,
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.pub = self.create_publisher(Target, 'target/raw', 10)
         self.create_subscription(FrameMetadata, 'tracks_meta', self.frame, qos_profile_sensor_data)
         self.create_subscription(Bool, 'target/reset', self.reset, 10)
 
     def update(self, params):
         result = super().update(params)
-        if result.successful:
+        if result.successful and not self.task_active:
             self.lock.rebind_iou, self.lock.rebind_timeout = self.settings['rebind_iou'], self.settings['rebind_timeout']
         return result
 
+    def task_request(self, msg):
+        if msg.active:
+            if msg.task_id <= self.last_task_id:
+                return
+            self.last_task_id = self.first_id = msg.task_id
+            self.target_class = msg.target_class_id
+            self.task_active = True
+            # Rebind is kept on: the tracker re-IDs a block that touches the image border. Only same-class,
+            # overlapping (rebind_iou) boxes within rebind_timeout can take over.
+            self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
+            self.last_stamp = msg.task_id * 1e-9
+        elif msg.task_id == self.first_id:
+            self.task_active = False
+            self.lock = Lock(rebind_iou=0.)
+        self.pub.publish(Target(header=self.get_header()))
+
     def reset(self, msg):
         if msg.data:
+            self.first_id = 0
+            self.target_class = None
+            self.task_active = False
             self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
             self.last_stamp = None
-            # Explicit unlock immediately propagates through the filter and decision.
             self.pub.publish(Target(header=self.get_header()))
 
     def get_header(self):
@@ -115,7 +140,11 @@ class Selector(ConfigNode):
             return
         self.last_stamp = stamp
         prev_id = self.lock.id
-        b = self.lock.select(msg.boxes, stamp)
+        if self.first_id and not self.task_active:
+            self.pub.publish(Target(header=msg.header))
+            return
+        boxes = candidates(msg.boxes, self.target_class) if self.task_active else msg.boxes
+        b = self.lock.select(boxes, stamp)
         if self.lock.id != prev_id:
             self.dbg.event('lock_change', old=prev_id, new=self.lock.id, boxes=len(msg.boxes),
                            rebound=prev_id is not None)
@@ -132,7 +161,13 @@ class Selector(ConfigNode):
         out = Target(header=msg.header, image_width=msg.width,
                      image_height=msg.height, locked=self.lock.id is not None,
                      track_id=self.lock.id or 0, observed=b is not None, valid=b is not None)
+        out.first_grasp_id = self.first_id
         if b is not None:
+            if self.task_active:
+                obstacle = obstacle_for(b, msg.boxes)
+                if obstacle is not None:
+                    other, out.sweep_side, out.obstacle_overlap, out.obstacle_near = obstacle
+                    out.obstacle_id = other.track_id
             out.class_id = b.class_id
             out.raw_x = out.x = b.x + b.width / 2
             out.raw_y = out.y = b.y + b.height  # bottom edge, not centre
@@ -189,12 +224,13 @@ class Alignment(ConfigNode):
     def __init__(self):
         super().__init__('alignment')
         self.configure(dict(camera_servo=False,
-                            deadzone_x=0.04, deadzone_y=0.2, bottom_target=0.9,
+                            deadzone_x=0.04, deadzone_y=0.1, bottom_target=0.8,
                             forward_speed=0.5, forward_max_error_x=0.3, grasp_error_x=0.15,
                             yaw_near_weight=0.2, yaw_center_weight=0.3, yaw_full_error_x=0.5,
-                            yaw_gain=-1.0, pitch_gain=-0.5,
-                            max_yaw_rate=2.0, max_pitch_rate=0.2, grasp_pitch=-0.26,
+                            yaw_gain=-1.0, pitch_gain=1.5,
+                            max_yaw_rate=2.0, max_pitch_rate=0.2, grasp_pitch=math.radians(40.),
                             pitch_timeout=0.25, input_timeout=0.25, hold_seconds=0.3,
+                            reverse_speed=0.1, grasp_pitch_tol=math.radians(1.7),
                             pitch_joint='camera_pitch'))
         self.target_msg = None
         self.pitch = None
@@ -243,8 +279,6 @@ class Alignment(ConfigNode):
             stamp = seconds(msg.header.stamp)
             if math.isfinite(value) and (self.pitch_time is None or stamp > self.pitch_time):
                 self.pitch, self.pitch_time = value, stamp
-                # 注意：pitch < grasp_pitch时重置（相机还没低头到位），而不是 >
-                # 因为grasp_pitch是最低要求，pitch应该大于等于它才能抓取
                 if value < self.settings['grasp_pitch']:
                     self.hold_start = None
         except (ValueError, IndexError):
@@ -261,12 +295,19 @@ class Alignment(ConfigNode):
         p, m = self.settings, self.target_msg
         out = AlignmentCommand(valid_for_sec=p['input_timeout'], reason='no_target')
         out.header.stamp = now.to_msg()
+        # Invalid/stale updates must retain task identity so the executor accepts
+        # the stop update instead of retaining its previous grasp_ready command.
+        if m is not None:
+            out.first_grasp_id, out.clearance = m.first_grasp_id, m.clearance
+            out.track_id, out.class_id = m.track_id, m.class_id
         fresh = m is not None and 0 <= t - seconds(m.header.stamp) <= p['input_timeout']
         if fresh and m.valid and m.locked and m.image_width > 0 and m.image_height > 0 and all(math.isfinite(v) for v in [m.x, m.y]):
             out.header.frame_id = m.header.frame_id
             out.track_id, out.valid, out.predicted = m.track_id, True, not m.observed
             out.first_grasp_id, out.clearance = m.first_grasp_id, m.clearance
             out.class_id = m.class_id
+            out.obstacle_id, out.sweep_side = m.obstacle_id, m.sweep_side
+            out.obstacle_overlap, out.obstacle_near = m.obstacle_overlap, m.obstacle_near
             out.error_x = (m.x - m.image_width/2) / (m.image_width/2)
             out.error_y = (m.y - p['bottom_target'] * m.image_height) / (m.image_height/2)
             # Steering is weighted by distance: full gain while the block is far (turn early), fading
@@ -280,14 +321,15 @@ class Alignment(ConfigNode):
             gain = p['yaw_gain'] * max(p['yaw_near_weight'], 1. - near) * offset
             out.yaw_rate = rate(out.error_x, dead_x, gain, p['max_yaw_rate'])
             out.aligned = abs(out.error_x) <= dead_x and abs(out.error_y) <= p['deadzone_y']
-            centred = abs(out.error_x) <= p['forward_max_error_x'] and not self.fired
+            out.open_allowed = abs(out.error_y) <= p['deadzone_y'] and m.observed
+            centred = abs(out.error_x) <= p['forward_max_error_x']
             out.reason = 'aligning'
             if p['camera_servo']:
                 out.pitch_rate = rate(out.error_y, p['deadzone_y'], p['pitch_gain'], p['max_pitch_rate'])
                 pitch_fresh = self.pitch_time is not None and 0 <= t - self.pitch_time <= p['pitch_timeout']
                 # Positive pitch is low-head.  Grasp only after the camera reaches the
                 # positive threshold; at 0 deg it must keep approaching.
-                ready = out.aligned and m.observed and pitch_fresh and self.pitch >= p['grasp_pitch']
+                ready = out.aligned and m.observed and pitch_fresh and self.pitch >= p['grasp_pitch'] - p['grasp_pitch_tol']
                 # 调试：记录ready条件的各个组成部分
                 if out.aligned:
                     self.dbg.event('ready_check', every=0.5,
@@ -296,12 +338,12 @@ class Alignment(ConfigNode):
                                    pitch_fresh=pitch_fresh,
                                    pitch_current=round(self.pitch, 3) if self.pitch is not None else None,
                                    pitch_required=round(p['grasp_pitch'], 3),
-                                   pitch_ok=self.pitch >= p['grasp_pitch'] if self.pitch is not None else False,
+                                   pitch_ok=self.pitch >= p['grasp_pitch'] - p['grasp_pitch_tol'] if self.pitch is not None else False,
                                    ready=ready,
                                    hold_time=round(t - self.hold_start, 2) if self.hold_start else 0)
                 # Camera not yet down to the grasp angle: drive forward (once roughly centred) so the
                 # block's bottom edge drops in the image and the camera can keep tilting down.
-                if pitch_fresh and self.pitch < p['grasp_pitch'] and centred:
+                if pitch_fresh and self.pitch < p['grasp_pitch'] - p['grasp_pitch_tol'] and centred:
                     out.forward_speed = p['forward_speed']
                     out.reason = 'approaching'
                 elif out.aligned:
@@ -309,22 +351,23 @@ class Alignment(ConfigNode):
             else:
                 ready = out.aligned and m.observed
                 # Bottom edge above the band = block is far: drive forward once roughly centred.
-                # Below the band = too close: stop (no reverse).
+                # Below the band = too close: reverse only with a real, centred target.
                 if out.error_y < -p['deadzone_y'] and centred:
                     out.forward_speed = p['forward_speed']
                     out.reason = 'approaching'
                 elif out.error_y > p['deadzone_y']:
+                    out.forward_speed = -p['reverse_speed'] if centred and m.observed else 0.
                     out.reason = 'too_close'
                 elif out.aligned:
                     out.reason = 'aligned_waiting_hold'
-            # 简化逻辑：满足ready条件就立即触发grasp_request，不再等待hold_seconds
-            # 因为hold_start机制在实际运行中由于各种原因（目标抖动、pitch波动）很难累积
-            if ready and not self.fired:
-                out.grasp_request, self.fired = True, True
-                self.get_logger().info(f'Grasp request sent: aligned={out.aligned}, pitch={round(self.pitch, 3) if self.pitch is not None else None}')
-            if self.fired:
+            # Recheck readiness every frame: sweep/opening can defer grasp admission.
+            out.grasp_request = ready
+            if ready:
                 out.yaw_rate = out.pitch_rate = out.forward_speed = 0.
-                out.reason = 'grasp_requested_waiting_reset'
+                out.reason = 'grasp_ready'
+            if m.first_grasp_id and not m.observed:
+                out.yaw_rate = out.pitch_rate = out.forward_speed = 0.
+                out.reason = 'waiting_for_locked_target'
         else:
             self.hold_start = None
             out.reason = 'stale_or_invalid_target' if m is not None else 'no_target'

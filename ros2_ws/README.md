@@ -9,24 +9,21 @@ ROS 2 物块对准抓取视觉感知
 ## 节点与接口
 
 ```text
-camera（可选 USB/视频文件节点，或外部 ROS 相机驱动）
-  └─ camera/image_raw [sensor_msgs/Image, rgb8]
-      └─ detector [GStreamer → nvstreammux → nvinfer/TensorRT]
-          └─ detections [block_interfaces/Frame]
-              └─ tracker [独立 GStreamer → nvstreammux → nvtracker/NvDCF]
-                  └─ tracks [block_interfaces/Frame]
-                      ├─ selector → target/raw [Target]
-                      │   └─ filter → target/filtered [Target]
-                      │       ├─ alignment → alignment/command [AlignmentCommand]
-                      │       └─ display ← tracks（屏幕窗口）
-                      └─ 任意新增节点可直接订阅
-camera/joint_states [sensor_msgs/JointState] → alignment（仅 camera_servo=true；actuator 从串口 $FB 反馈发布）
-alignment/command → actuator → serial_tx（$CMD 帧，见 docs/serial_protocol.md）
-target/reset [std_msgs/Bool] → selector
-serial_tx [std_msgs/String] → serial_node（可选串口桥）→ serial_rx [std_msgs/String]
+perception（单个原生 C++ 进程）
+  V4L2 MJPEG → appsrc → nvjpegdec
+  → NVMM/Y42B → nvvidconv → NVMM/NV12
+  → nvstreammux → nvinfer → nvtracker
+      ├─ detections_meta / tracks_meta [FrameMetadata：时间戳、尺寸、框，无像素]
+      │   ├─ selector / first_grasp → target/raw → filter → target/filtered
+      │   │   └─ alignment → alignment/command → actuator → serial_tx
+      │   └─ gripper → gripper/angles
+      └─ 有界显示队列 → NVMM/RGBA → nvdsosd（GPU）→ EGL 本机显示
+camera/joint_states → alignment（仅 camera_servo=true）
+target/reset → selector
+serial_tx → serial_node（可选）→ serial_rx
 ```
 
-每个功能是独立可执行程序和 ROS 进程，仅通过话题和参数连接；检测和跟踪不是把同一管线伪装成两个节点。tracker 从 `Frame` 的图像和检测框重建 `NvDsObjectMeta`，交给真正的 NVIDIA nvtracker，不使用自写 ID 匹配替代。`Frame` 原子携带图像和框，避免跨话题丢帧错配，同时可以独立回放跟踪输入。代价是进程间复制图像，640×480 RGB 每帧约 0.92 MB；输入/中间图像采用 SensorDataQoS（best effort），算法输出和指令采用 reliable。内置单相机、batch=1，输入分辨率固定；需多相机时按命名空间分别启动。
+仅有这一条图像链路；原 `camera`、`detector`、`tracker`、Python `display` 可执行程序及 `Frame` 整图消息已移除。`/camera/image_raw`、`/detections`、`/tracks` 不再发布。控制节点统一读取 `FrameMetadata` 的 `header`、`width`、`height`、`boxes`，`Target` 和动作接口不变。相机、解析器到解码器之间仍有压缩 JPEG 的 CPU 内存传递；从硬件解码输出开始，像素留在 NVMM，CPU 仅访问框和时间戳等元数据。这不代表 GPU 内部没有格式转换或显存复制。
 
 - 检测：`class_id=0..3`；模板要求 TensorRT FP16。原始候选阈值固定为 0.01，在线 `confidence_threshold` 支持 `[0.01, 1]`。不要在 nvinfer 配置里增加更高的分类阈值，否则降低 ROS 阈值不能恢复已被丢弃的框。候选仍受 NMS/top-k 限制。
 - 选择：按 `y + height` 最大选取真实观测框，同分按置信度和 ID 排序；锁定后不因 pitch、排序变化或丢失切换。长时间丢失仍保持 ID，但禁止继续运动。显式 reset 后重新选取；跟踪器重启或目标 ID 被回收后也需要 reset。
@@ -45,15 +42,15 @@ cd /home/nvidia/project/gcxl-2027
 source /opt/ros/humble/setup.bash
 # DeepStream SDK/CUDA 和 YOLO parser 按原工程要求安装/编译。
 # 系统依赖：
-sudo apt-get install python3-numpy python3-opencv python3-pytest libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+sudo apt-get install python3-numpy python3-pytest libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 colcon --log-base ros2_ws/log_gcxl build --base-paths ros2_ws/src \
-  --build-base ros2_ws/build_gcxl --install-base ros2_ws/install_gcxl
+  --build-base ros2_ws/build_gcxl --install-base ros2_ws/install_gcxl --cmake-args -DBUILD_TESTING=ON
 source ros2_ws/install_gcxl/setup.bash
 ```
 
-USB 相机使用直接 V4L2 mmap 采集 MJPEG，OpenCV 只负责解码，不再通过 `VideoCapture` 或 GStreamer 打开 USB 相机。默认请求 1280×720@60；每次打开或重连时恢复设备报告的标准图像控制默认值（先恢复自动模式，再恢复仍可写的控制项），不强制手动曝光，不做 toggle。自动模式下非活动的手动控制不会写入；相对运动和动作类控制不会执行。默认曝光下实际帧率可能低于 60。
+USB 相机由原生节点直接 V4L2 mmap 采集，默认请求 1280×720@60。每次启动恢复设备报告的可写标准图像控制默认值，先恢复自动模式；跳过非活动手动项、只读项和运动动作，不使用曝光 toggle。实际帧率仍受光照影响。不可恢复的相机或管线故障导致进程非零退出，并由 launch 停止整栈；不会自动恢复运动。
 
-`exposure` 参数已移除，旧配置传入该参数会报错。修改源码后应构建并 source 上面的 `ros2_ws/install_gcxl/setup.bash`，不要使用旧 `install` 或项目根目录的 `install_gcxl` 副本。USB 采集与解码/发布分线程，发布端繁忙时只保留最新压缩帧；日志每五秒报告实际采集/发布帧率、覆盖帧数、驱动序号缺口和读取错误。`/camera/image_raw` 仍为 RGB8，检测/跟踪的 GStreamer/DeepStream 链路不变；视频文件继续通过 OpenCV 读取。
+修改后重新构建并 source `ros2_ws/install_gcxl/setup.bash`。配置集中于 `perception.yaml` 的 `perception` 节，不再使用旧 camera/detector/tracker 配置节。`exposure` 和旧图像输入／视频文件回放入口已移除。
 
 `ros2_ws/src/block_perception/config/infer_blocks.txt` 已配置当前项目的 ONNX、独立 FP16 engine、训练模型标签和 parser 路径。迁移目录后需要同步修改这些绝对路径并重新编译。构建采用 `build_gcxl/install_gcxl`，避免复用迁移前含旧绝对路径的 CMake 缓存。
 
@@ -71,18 +68,17 @@ cd ../..
 
 ```bash
 # 内置 USB 相机；全部节点参数统一集中在 config/perception.yaml（相机源、图像尺寸、
-# detector/tracker 的 DeepStream 配置路径、算法参数、串口参数），source 可填视频文件绝对路径。
-ros2 launch block_perception perception.launch.py camera:=true
+# perception 的 DeepStream 配置路径、算法参数、串口参数），source 为 V4L2 设备。
+ros2 launch block_perception perception.launch.py
 
-# 若已有 ROS 相机驱动，camera 默认 false；驱动应发布 /camera/image_raw，rgb8、1280x720。
-# 图像宽高只在 perception.yaml 设置（camera/detector/tracker 三段必须一致，启动时校验）；width 必须能被 4 整除。
-# 外部驱动不满足编码时，应加独立转换节点，不修改检测节点。
+# 无桌面时关闭显示；仅 perception 处理图像，控制逻辑正常运行。
+ros2 launch block_perception perception.launch.py display:=false autonomous:=false
 
 # 串口桥默认不启动；需要时加 serial:=true，设备、波特率、轮询周期在 perception.yaml 的 serial_node 段。
 ros2 launch block_perception perception.launch.py serial:=true
 ```
 
-内置相机节点对图像缩放并转为 RGB；它使用软件读取时间戳，精确同步场景请使用硬件相机驱动和采集时间戳。视频文件按配置帧率播放，到结尾停止，不自动循环。
+时间戳在 V4L2 出队时由单调采集时间映射到 ROS 时钟，并通过 GStreamer PTS 关联到检测、跟踪和 OSD。输入限定为物理 MJPEG 相机，统一管线不支持 `use_sim_time`。
 
 `camera_servo=true` 时由外部模块发布实际 pitch（`camera_servo=false` 不需要）：
 
@@ -95,12 +91,19 @@ ros2 topic echo /alignment/command
 ros2 topic pub --once /target/reset std_msgs/msg/Bool '{data: true}'
 ```
 
-每个节点也可以 `ros2 run block_perception selector` 等单独启动。DeepStream 节点为 `ros2 run block_deepstream detector|tracker --ros-args -p config_file:=...`。`width`、`height`、DeepStream 配置路径为只读启动参数；算法参数在线修改。
+控制节点仍可用 `ros2 run block_perception selector` 等单独运行。只测试感知、避免启动任何执行节点：
+
+```bash
+ros2 run block_deepstream perception --ros-args \
+  --params-file ros2_ws/src/block_perception/config/perception.yaml -p headless:=true
+```
+
+`headless:=true` 保留 GPU OSD 绘制、使用 fakesink，适合验证；`display:=false` 完全关闭显示分支。
 
 ## 在线调参
 
 ```bash
-ros2 param set /detector confidence_threshold 0.4
+ros2 param set /perception confidence_threshold 0.4
 ros2 param set /filter process_noise 80.0
 ros2 param set /filter measurement_noise 25.0
 ros2 param set /filter prediction_timeout 0.35
@@ -112,66 +115,41 @@ ros2 param set /alignment grasp_pitch -0.3   # 仅 camera_servo=true
 
 参数回调立即生效并检查非有限数、负方差、无效死区、越界的 `bottom_target`、颠倒的 pitch 区间。修改区间时中间状态也必须合法，需要同时更改时通过 `set_parameters_atomically` 服务提交。改动抓取参数会重新计算持续时间；已发出的抓取请求不会因为调参重复发出。参数不会自动持久化，确认标定后修改 `config/perception.yaml`。
 
-## 屏幕显示
+## 屏幕显示与记录
 
-launch 默认启动 `display` 节点，在本机屏幕弹出 OpenCV 窗口（需要图形桌面，SSH 下需设置 `DISPLAY`），显示 `/tracks` 携带的图像，叠加绿色检测框/ID、黄色滤波前中心、青色滤波后中心、中心偏差连线和偏差文字。叠加按精确图像时间戳匹配，最多缓存 30 帧；不会把旧帧坐标叠加到新帧上。无显示环境时用 `display:=false` 关闭该节点。对准指令数值可用 `ros2 topic echo /alignment/command` 查看。
+默认由 `nvdsosd process-mode=1` 在 NVMM 上画框、ID 和目标标记，EGL 本机显示需要图形桌面。目标按精确采集时间戳和 frame_id 匹配；显示分支最多等待 50 ms，超时只保留该帧检测框，不使用旧目标。显示队列最多两帧、溢出丢旧帧；采集 appsrc 队列也限制为两帧。控制元数据在显示等待之前发布。
 
-## rosbag 录制与回放
+本版未接入 NVENC 或网络预览。元数据可以直接录制：
 
 ```bash
-# 完整调试记录（图像被多个 Frame 消息携带，磁盘流量较高）
-ros2 bag record -o block_session /camera/image_raw /camera/joint_states \
-  /detections /tracks /target/raw /target/filtered /target/reset \
-  /alignment/command /parameter_events
-
-# 算法复现：从 tracks 重算选择、滤波和指令，关闭实时相机/检测/跟踪。
-ros2 launch block_perception perception.launch.py detector:=false tracker:=false use_sim_time:=true
-# 另一个终端，先 source 相同 overlay：仅回放上游输入，避免同一输出话题多个发布者。
-ros2 bag play block_session --clock --topics /tracks /camera/image_raw /target/reset
-
-# 若要复现 tracker，启动 tracker:=true detector:=false，再只播放：
-# /detections /camera/image_raw /target/reset
-# 若要复现 detector，启动全部算法节点、camera:=false、use_sim_time:=true，
-# 只播放 /camera/image_raw /target/reset。
+ros2 bag record -o block_session /detections_meta /tracks_meta /target/raw \
+  /target/filtered /target/reset /alignment/command /gripper/angles /parameter_events
 ```
 
-只查看既有结果时，不启动算法节点，只启动 bridge 并回放原始记录。`/parameter_events` 记录调参事件，但不会自动恢复参数；复现时加载相同 YAML。回放采用单调时间，重新开始、向后 seek 或循环播放前应重启算法节点和 tracker（旧 ID/时间序列不能延用）。纯回放对准节点不依赖 GPU；重跑 detector/tracker 需要对应 DeepStream 环境。不要把回放生成的指令接到实际执行模块。
+元数据记录不包含视频，不能用于重新运行检测或跟踪。若要复现控制算法，可单独启动 selector/filter/alignment 并用 ROS 仿真时钟回放 `/tracks_meta`；不要同时运行实时感知或硬件执行节点。旧 `Frame` 图像录包不兼容新接口。
 
 ## 验证
+
+当前 10 分钟真机结果、延迟、资源占用和故障测试见 [NVMM 验证记录](../docs/nvmm_validation.md)。
 
 ```bash
 source /opt/ros/humble/setup.bash
 source ros2_ws/install_gcxl/setup.bash
 # 禁用环境中与旧版 pytest 冲突的第三方自动插件；不影响这些测试。
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pytest -q ros2_ws/src/block_perception/test
-# Jetson 上实测 detector 和 nvtracker：验证模型加载、图像往返、稳定 ID 和采集时间戳。
+# Jetson 真机：验证硬解、NVMM caps、检测/跟踪元数据及 GPU OSD。
 BLOCK_TEST_DEEPSTREAM=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pytest -q \
   ros2_ws/src/block_perception/test/test_deepstream.py
-# 可选：增加 BLOCK_TEST_IMAGE=/absolute/path/positive.png，要求真实图片检测到至少一个目标。
+ctest --test-dir ros2_ws/build_gcxl/block_deepstream --output-on-failure
 ```
 
-当前验证覆盖：三个包编译、锁定不切换、卡尔曼抑噪/预测、超时归零、禁止预测触发抓取、下边缘进入目标带才前进/触发、单次触发、动态参数校验、显示叠加/时间戳匹配、实际 nvtracker 管线。空白图像的 detector 测试只验证模型加载与管线通信；四类检测精度和实体抓取距离仍需实际场景图像和相机进行联调。
+控制测试覆盖锁定、预测、过期停止、首次抓取和夹爪同帧匹配；原生测试覆盖 OSD 精确匹配、缓存上限及退出唤醒。实际检测精度和物理抓取仍取决于场景、模型与标定。
 
+## 左右夹爪舵机角度接口
 
+`gripper` 订阅 `/target/raw` 和 `/tracks_meta`，按采集时间戳、frame_id、track_id 匹配真实观测框，提取左右边界。预测框、其他 ID 和过期帧不能用于角度计算。根据 `mm_per_px`、`link_ref_deg`、`link_offset`、`link_length` 等标定参数计算建议角度，算法与本次图像链路重构前相同。
 
-## 左右夹爪舵机角度接口（计算方法待实现）
-
-新增独立节点 `gripper`，默认随 launch 启动，也可 `ros2 run block_perception gripper`。
-订阅 `/target/raw` 和 `/tracks`，按同一采集时间戳、相机 frame_id 和锁定 track_id 获取真实观测框，
-提取 `left_edge_px=x`、`right_edge_px=x+width`。不会选其他 ID 的框或使用漏检预测框计算。
-
-发布 `/gripper/angles`（`block_interfaces/msg/GripperAngles`），包含目标 ID、原始图像尺寸、
-左右边界、左右舵机角度（rad）、就绪状态及原因。公式预留在
-`src/block_perception/block_perception/gripper.py` 的 `calculate_angles()`：
-当前返回 None，不进行角度计算；有合法边界时 `bounds_valid=true`，
-但 `angles_ready=false`、角度为 NaN、`reason=calculation_not_implemented`。
-未来仅需实现该函数，返回 `(left_rad, right_rad)`，无需修改检测、跟踪或对准节点。
-物理舵机零点、方向、开合范围与标定由后续计算方法确定，当前不设假值。
-
-该话题是视觉角度建议，不控制舵机，也不改变原有抓取请求条件。执行方未来必须要求
-`angles_ready=true` 且消息采集时间未超过 `valid_for_sec`；对准抓取请求仍来自
-`/alignment/command`。输入中断后节点发布过期状态，`input_timeout` 默认 0.25 秒，支持在线修改。
-可用 `ros2 topic echo /gripper/angles` 查看边界/就绪状态，录包命令加上 `/gripper/angles` 即可保存输出。
+输出 `/gripper/angles`（`GripperAngles`），包含时间戳、目标 ID、边界、建议角度、有效期和状态。该节点只计算建议；是否执行由 actuator 和动作状态决定。输入中断时输出失效状态，默认 `input_timeout=0.25` 秒。
 
 ## 独立任务：首次抓取 class_0
 
@@ -181,7 +159,7 @@ BLOCK_TEST_DEEPSTREAM=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/python3 -m pyt
 独立启动任务及其依赖节点（替代普通 perception.launch.py；两套入口不要同时运行）：
 
 ```bash
-ros2 launch block_perception first_grasp.launch.py camera:=true serial:=true
+ros2 launch block_perception first_grasp.launch.py serial:=true
 ```
 
 相机、串口等参数沿用普通 launch；按实际输入设置。启动后任务处于等待状态，不自动抓取。

@@ -28,9 +28,9 @@ while true; do
 
     # ROS2话题帧率统计
     echo "【ROS2话题帧率】"
-    timeout 2s ros2 topic hz /camera/image_raw 2>/dev/null | grep "average rate" || echo "  /camera/image_raw: 无数据"
-    timeout 2s ros2 topic hz /detections 2>/dev/null | grep "average rate" || echo "  /detections: 无数据"
-    timeout 2s ros2 topic hz /tracks 2>/dev/null | grep "average rate" || echo "  /tracks: 无数据"
+    echo "采集帧率见 perception 节点日志（不发布整图）"
+    timeout 2s ros2 topic hz /detections_meta 2>/dev/null | grep "average rate" || echo "  /detections_meta: 无数据"
+    timeout 2s ros2 topic hz /tracks_meta 2>/dev/null | grep "average rate" || echo "  /tracks_meta: 无数据"
     echo ""
 
     # GPU统计
@@ -63,25 +63,7 @@ while true; do
 
     # DeepStream进程状态
     echo "【DeepStream进程】"
-    DETECTOR_PID=$(pgrep -f "detector_node")
-    TRACKER_PID=$(pgrep -f "tracker_node")
-
-    if [ -n "$DETECTOR_PID" ]; then
-        DETECTOR_CPU=$(ps -p $DETECTOR_PID -o %cpu --no-headers)
-        DETECTOR_MEM=$(ps -p $DETECTOR_PID -o %mem --no-headers)
-        echo "  detector_node (PID $DETECTOR_PID): CPU ${DETECTOR_CPU}%, MEM ${DETECTOR_MEM}%"
-    else
-        echo "  detector_node: 未运行"
-    fi
-
-    if [ -n "$TRACKER_PID" ]; then
-        TRACKER_CPU=$(ps -p $TRACKER_PID -o %cpu --no-headers)
-        TRACKER_MEM=$(ps -p $TRACKER_PID -o %mem --no-headers)
-        echo "  tracker_node (PID $TRACKER_PID): CPU ${TRACKER_CPU}%, MEM ${TRACKER_MEM}%"
-    else
-        echo "  tracker_node: 未运行"
-    fi
-    echo ""
+    ps -C perception -o pid,%cpu,%mem,etime,comm
 
     # 功率模式
     if command -v nvpmodel &> /dev/null; then

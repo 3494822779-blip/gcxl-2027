@@ -1,7 +1,7 @@
-"""Locked target bounding edges -> gripper angle proposal (formula intentionally absent)."""
+"""Locked target metadata -> calibrated gripper angle proposal."""
 import copy
 import math
-from block_interfaces.msg import Frame, Target, GripperAngles
+from block_interfaces.msg import FrameMetadata, Target, GripperAngles
 from rclpy.qos import qos_profile_sensor_data
 from .nodes import ConfigNode, run
 
@@ -36,7 +36,7 @@ class Gripper(ConfigNode):
         self.current = None
         self.last_time = None
         self.pub = self.create_publisher(GripperAngles, 'gripper/angles', 10)
-        self.create_subscription(Frame, 'tracks', self.frame, qos_profile_sensor_data)
+        self.create_subscription(FrameMetadata, 'tracks_meta', self.frame, qos_profile_sensor_data)
         self.create_subscription(Target, 'target/raw', self.target, 10)
         self.create_timer(0.05, self.watchdog)
 
@@ -52,9 +52,9 @@ class Gripper(ConfigNode):
         return out
 
     def frame(self, msg):
-        # Cache metadata only, never retain the large RGB payload.
-        key = (stamp_ns(msg.image.header), msg.image.header.frame_id)
-        self.frames[key] = (msg.image.width, msg.image.height, msg.boxes)
+        # Cache metadata for exact timestamp/frame_id matching.
+        key = (stamp_ns(msg.header), msg.header.frame_id)
+        self.frames[key] = (msg.width, msg.height, msg.boxes)
         while len(self.frames) > 30:
             self.frames.pop(next(iter(self.frames)))
         self.match()

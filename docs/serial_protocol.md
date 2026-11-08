@@ -265,7 +265,7 @@ ros2 topic info /serial_tx --verbose
 ```bash
 source /opt/ros/humble/setup.bash
 source ros2_ws/install_gcxl/setup.bash
-BP_DEBUG=actuator ros2 launch block_perception perception.launch.py camera:=true serial:=true
+BP_DEBUG=actuator ros2 launch block_perception perception.launch.py serial:=true
 ```
 
 另一个已加载 ROS 环境的终端查看：

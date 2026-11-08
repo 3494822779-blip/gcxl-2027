@@ -132,7 +132,7 @@ ros2 service call /robot/memory/get std_srvs/srv/Trigger '{}'
 启动并等待人工动作：
 
 ```bash
-BP_DEBUG=actuator,alignment ros2 launch block_perception perception.launch.py camera:=true serial:=true autonomous:=false
+BP_DEBUG=actuator,alignment ros2 launch block_perception perception.launch.py serial:=true autonomous:=false
 
 抓
 ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operation: approach_grasp}" --feedback

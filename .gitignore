@@ -13,3 +13,8 @@ __pycache__/
 # Generated build/test logs
 /log/
 /ros2_ws/log/
+
+# Obsolete/generated ROS overlays must not shadow the authoritative workspace.
+/install_gcxl/
+/ros2_ws/install/
+/ros2_ws/build/

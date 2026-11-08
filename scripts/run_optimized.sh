@@ -33,32 +33,10 @@ else
     echo ""
 fi
 
-# 检查TensorRT引擎文件
-ENGINE_FILE="$PROJECT_ROOT/models/yolov8n_gcxl_aug/best_b1_gpu0_fp16_1280x720.engine"
-if [ ! -f "$ENGINE_FILE" ]; then
-    echo "⚠ 警告: 未找到720p优化的TensorRT引擎"
-    echo "   路径: $ENGINE_FILE"
-    echo ""
-    echo "需要先生成TensorRT引擎（约5-10分钟）"
-    echo "运行: $SCRIPT_DIR/rebuild_engine_720p.sh"
-    echo ""
-    read -p "是否现在生成引擎？(y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        "$SCRIPT_DIR/rebuild_engine_720p.sh"
-        echo ""
-    else
-        echo "跳过引擎生成，将使用已有引擎（如果存在）"
-        echo ""
-    fi
-else
-    echo "✓ 已找到720p TensorRT引擎"
-    echo ""
-fi
-
 # 解析命令行参数
 TASK="normal"
-CAMERA="true"
+DISPLAY_VIDEO="true"
+HEADLESS="false"
 SERIAL="true"
 
 while [[ $# -gt 0 ]]; do
@@ -67,8 +45,12 @@ while [[ $# -gt 0 ]]; do
             TASK="first_grasp"
             shift
             ;;
-        --no-camera)
-            CAMERA="false"
+        --no-display)
+            DISPLAY_VIDEO="false"
+            shift
+            ;;
+        --headless)
+            HEADLESS="true"
             shift
             ;;
         --no-serial)
@@ -77,7 +59,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "未知参数: $1"
-            echo "用法: $0 [--first-grasp] [--no-camera] [--no-serial]"
+            echo "用法: $0 [--first-grasp] [--no-display] [--headless] [--no-serial]"
             exit 1
             ;;
     esac
@@ -85,7 +67,7 @@ done
 
 echo "启动配置："
 echo "  任务模式: $TASK"
-echo "  相机: $CAMERA"
+echo "  NVMM 本机显示: $DISPLAY_VIDEO (headless=$HEADLESS)"
 echo "  串口: $SERIAL"
 echo ""
 
@@ -98,9 +80,9 @@ source install_gcxl/setup.bash
 if [ "$TASK" = "first_grasp" ]; then
     echo "启动首次抓取任务..."
     echo ""
-    ros2 launch block_perception first_grasp.launch.py camera:=$CAMERA serial:=$SERIAL
+    ros2 launch block_perception first_grasp.launch.py display:=$DISPLAY_VIDEO headless:=$HEADLESS serial:=$SERIAL
 else
     echo "启动普通抓取任务..."
     echo ""
-    ros2 launch block_perception perception.launch.py camera:=$CAMERA serial:=$SERIAL
+    ros2 launch block_perception perception.launch.py display:=$DISPLAY_VIDEO headless:=$HEADLESS serial:=$SERIAL
 fi

@@ -2,8 +2,8 @@
 # 统一参数配置文件
 #
 # 工作区内所有节点的全部运行参数集中在本文件，每个节点只读取与自己
-# 同名的小节（camera / detector / tracker / filter / alignment / gripper /
-# display / serial_node / selector）。
+# 同名的小节（perception / filter / alignment / gripper /
+# serial_node / selector）。
 #
 # 使用：ros2 launch block_perception perception.launch.py [params:=<其他yaml>]
 #       修改本文件后需重新 colcon build（安装目录中的副本不会自动更新）。
@@ -11,42 +11,27 @@
 # 标注"启动时固定"的参数在节点构造时读取，运行中 ros2 param set 无效；
 # 其余算法参数可在线修改，回调立即校验并生效（见 ros2_ws/README.md 在线调参）。
 #
-# 开关类选项（camera / detector / tracker / display / serial / use_sim_time）
-# 仍是 launch 参数，因为它们决定启动哪些进程，不属于节点参数。
+# 开关类选项（display / headless / serial）
+# 由 launch 统一传递。相机、解码、推理、跟踪固定在 perception 进程内。
 #
 # 本文件中的绝对路径在迁移目录后需同步修改并重新编译。
 # ============================================================================
 
-# ---------- 图像尺寸 ----------
-# camera、detector、tracker 三段必须一致，launch 启动时校验；width 必须能被 4 整除。
-
-camera:                            # 仅 camera:=true 时启动（内置 USB/视频文件相机）
+# ---------- 单进程 NVMM 感知 ----------
+perception:
   ros__parameters:
-    source: /dev/video0            # 启动时固定；USB 设备或视频文件绝对路径
-    width: 1280                    # 启动时固定；1280x720 MJPG
-    height: 720                    # 启动时固定；16:9
-    fps: 60.0                      # 启动时固定；请求60fps；曝光等控制使用设备默认，实际帧率由光照与设备决定
-    frame_id: camera_optical_frame # 启动时固定
-
-detector:                          # DeepStream nvinfer/TensorRT，发布 /detections
-  ros__parameters:
-    width: 1280                    # 启动时固定；与相机一致
-    height: 720                    # 启动时固定
-    confidence_threshold: 0.75     # 在线可调 [0.01, 1]；轻微降低以平衡高分辨率下的检测
-                                   # 不要在 infer 配置里调高，否则降低本阈值不能恢复已丢弃的框
-    config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/infer_blocks.txt
-                                   # 启动时固定；ONNX/engine/标签/parser 路径及 NMS 参数
-
-tracker:                           # DeepStream nvtracker/NvDCF，发布 /tracks
-  ros__parameters:
-    width: 1280                    # 启动时固定；匹配相机分辨率
-    height: 720                    # 启动时固定
-    config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/tracker_blocks.yml
-                                   # 启动时固定；NvDCF 匹配/状态估计参数
+    source: /dev/video0
+    width: 1280
+    height: 720
+    fps: 60                       # 请求帧率
+    frame_id: camera_optical_frame
+    inference_config: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/infer_blocks.txt
+    tracker_config: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/tracker_blocks.yml
     tracker_library: /opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so
-                                   # 启动时固定；nvtracker 插件库
-    tracker_width: 960             # 启动时固定；nvtracker 内部处理宽度
-    tracker_height: 544            # 启动时固定；内部处理尺寸（须为32的倍数）
+    tracker_width: 960
+    tracker_height: 544
+    confidence_threshold: 0.75     # 在线可调；跟踪前过滤
+    osd_wait_ms: 50                # 仅显示分支等待同帧目标；超时不画旧目标
 
 # ---------- 算法参数（在线可调） ----------
 
@@ -141,10 +126,6 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     claw_deadband_deg: 2.0         # 度；跟踪阶段夹爪目标变化不超过此值时不下发，抑制框宽抖动引起的舵机抖动
     pitch_timeout: 0.25            # 秒；pitch 反馈过期判定
     pitch_joint: camera_pitch
-
-display:                           # OpenCV 屏幕显示窗口（无图形桌面时用 display:=false 关闭）
-  ros__parameters:
-    window: block_perception
 
 # ---------- 串口桥 ----------
 

@@ -270,7 +270,7 @@ def test_claw_action_does_not_change_long_term_closure_settings(rig):
 
 def test_first_selector_uses_memory_as_well_as_current_images(rig):
     import json
-    from block_interfaces.msg import Frame, Box
+    from block_interfaces.msg import FrameMetadata, Box
     from std_msgs.msg import UInt64
     n = rig[0]
     first = FirstGraspTask()
@@ -286,10 +286,10 @@ def test_first_selector_uses_memory_as_well_as_current_images(rig):
             def publish(self, msg):
                 outputs.append(msg)
         first.pub = Capture()
-        frame = Frame()
-        frame.image.width, frame.image.height = 640, 480
+        frame = FrameMetadata()
+        frame.width, frame.height = 640, 480
         frame.boxes = [Box(track_id=3, class_id=0, x=300., y=200., width=40., height=40., observed=True)]
-        frame.image.header.stamp = first.get_clock().now().to_msg()
+        frame.header.stamp = first.get_clock().now().to_msg()
         first.frame(frame)
         assert not outputs[-1].valid  # visible target alone must not repeat a completed task
         first.start_action(UInt64(data=124))
@@ -303,7 +303,7 @@ def test_first_selector_uses_memory_as_well_as_current_images(rig):
         n.memory.complete_discard()
         first.remember(String(data=json.dumps(n.memory.decision_context())))
         assert first.memory_allows_selection()  # clearance is not the formal grasp
-        frame.image.header.stamp = first.get_clock().now().to_msg()
+        frame.header.stamp = first.get_clock().now().to_msg()
         first.frame(frame)
         assert outputs[-1].valid and outputs[-1].class_id == 0
         n.memory.finish_task('timeout', 'track')

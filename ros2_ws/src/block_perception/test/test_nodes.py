@@ -5,8 +5,8 @@ import rclpy
 from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool, UInt64
-from block_interfaces.msg import Frame, Box, Target
-from block_perception.nodes import Selector, Filter, Alignment, Display
+from block_interfaces.msg import FrameMetadata, Box, Target
+from block_perception.nodes import Selector, Filter, Alignment
 
 
 class Capture:
@@ -26,9 +26,9 @@ def nodes():
 
 def test_chain_lock_prediction_timeout_reset(nodes):
     selector, filt, alignment = nodes
-    frame = Frame()
-    frame.image.width, frame.image.height = 640, 480
-    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    frame = FrameMetadata()
+    frame.width, frame.height = 640, 480
+    frame.header.stamp = selector.get_clock().now().to_msg()
     frame.boxes = [Box(track_id=7, x=300., y=352., width=40., height=80., observed=True),
                    Box(track_id=8, x=50., y=100., width=40., height=80., observed=True)]
     selector.frame(frame)
@@ -40,7 +40,7 @@ def test_chain_lock_prediction_timeout_reset(nodes):
     assert alignment.pub.messages[-1].aligned
     assert alignment.pub.messages[-1].grasp_request  # current policy fires immediately
     time.sleep(.01)
-    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    frame.header.stamp = selector.get_clock().now().to_msg()
     frame.boxes = [frame.boxes[1]]
     selector.frame(frame)
     filt.target(selector.pub.messages[-1])
@@ -173,9 +173,9 @@ def test_camera_servo_mode_needs_pitch_and_drives_forward_until_it_is_down(nodes
 def test_selector_follows_block_after_tracker_id_change(nodes):
     selector = nodes[0]
     def send(sec, boxes):
-        f = Frame()
-        f.image.width, f.image.height = 640, 480
-        f.image.header.stamp.sec = sec
+        f = FrameMetadata()
+        f.width, f.height = 640, 480
+        f.header.stamp.sec = sec
         f.boxes = boxes
         selector.frame(f)
         return selector.pub.messages[-1]
@@ -188,41 +188,6 @@ def test_selector_follows_block_after_tracker_id_change(nodes):
     assert selector.set_parameters_atomically([Parameter('rebind_iou', value=2.)]).successful is False
 
 
-def test_display_exact_join(nodes):
-    display = Display()
-    try:
-        frame = Frame()
-        frame.image.header.stamp.sec = 10
-        frame.image.width, frame.image.height = 64, 48
-        frame.image.encoding, frame.image.step = 'rgb8', 64 * 3
-        frame.image.data = bytes(64 * 48 * 3)
-        frame.boxes = [Box(track_id=9, x=5., y=5., width=20., height=20.)]
-        target = Target(valid=True, observed=True, x=10., y=10., raw_x=11., raw_y=12.)
-        target.header.stamp.sec = 11
-        display.frame(frame)
-        display.target(target)
-        assert not display.fresh
-        target.header.stamp.sec = 10
-        display.target(target)
-        assert display.fresh and display.front == 1
-        front = display.buffers[display.front]
-        assert front.shape == (48, 64, 3)
-        assert front[5, 5].tolist() == [0, 255, 0]
-        # a second joined frame renders into the other buffer and swaps back
-        frame.image.header.stamp.sec = 12
-        target.header.stamp.sec = 12
-        display.frame(frame)
-        display.target(target)
-        assert display.front == 0 and display.buffers[0] is not display.buffers[1]
-        # GUI still showing the buffer that would be overwritten: frame is dropped
-        display.showing = 1
-        frame.image.header.stamp.sec = 13
-        target.header.stamp.sec = 13
-        display.frame(frame)
-        display.target(target)
-        assert display.front == 0
-    finally:
-        display.destroy_node()
 
 
 def test_first_task_independent_trigger_clearance_and_completion(first_nodes):
@@ -233,11 +198,11 @@ def test_first_task_independent_trigger_clearance_and_completion(first_nodes):
     task_id = selector.first_id
     # Duplicate external goals are rejected by ActionAPI (covered in test_actions).
     assert selector.first_id == task_id
-    frame = Frame()
-    frame.image.width, frame.image.height = 640, 480
+    frame = FrameMetadata()
+    frame.width, frame.height = 640, 480
     frame.boxes = [Box(track_id=1, class_id=0, x=300., y=200., width=40., height=40., observed=True),
                    Box(track_id=2, class_id=2, x=300., y=300., width=40., height=40., observed=True)]
-    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    frame.header.stamp = selector.get_clock().now().to_msg()
     selector.frame(frame)
     target = selector.pub.messages[-1]
     assert target.track_id == 2 and target.clearance and target.first_grasp_id == task_id
@@ -249,7 +214,7 @@ def test_first_task_independent_trigger_clearance_and_completion(first_nodes):
     selector.first_finished(request)
     assert selector.first_busy is None and not selector.first_done
     frame.boxes = frame.boxes[:1]
-    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    frame.header.stamp = selector.get_clock().now().to_msg()
     selector.frame(frame)
     target = selector.pub.messages[-1]
     assert target.track_id == 1 and not target.clearance
@@ -258,7 +223,7 @@ def test_first_task_independent_trigger_clearance_and_completion(first_nodes):
     request.header.stamp = selector.get_clock().now().to_msg()
     selector.first_finished(request)
     assert selector.first_done
-    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    frame.header.stamp = selector.get_clock().now().to_msg()
     selector.frame(frame)
     assert not selector.pub.messages[-1].valid
 
@@ -266,10 +231,10 @@ def test_first_task_independent_trigger_clearance_and_completion(first_nodes):
 def test_first_metadata_reaches_grasp_command_and_hazard_stops(first_nodes):
     selector, filt, alignment = first_nodes
     selector.start_action(UInt64(data=selector.get_clock().now().nanoseconds))
-    frame = Frame()
-    frame.image.width, frame.image.height = 640, 480
+    frame = FrameMetadata()
+    frame.width, frame.height = 640, 480
     frame.boxes = [Box(track_id=1, class_id=0, x=300., y=392., width=40., height=40., observed=True)]
-    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    frame.header.stamp = selector.get_clock().now().to_msg()
     selector.frame(frame)
     filt.target(selector.pub.messages[-1])
     alignment.target(filt.pub.messages[-1])
@@ -279,7 +244,7 @@ def test_first_metadata_reaches_grasp_command_and_hazard_stops(first_nodes):
     assert not cmd.clearance and cmd.class_id == 0
     # A fresh hazard frame must not be converted to a predicted approach target.
     frame.boxes.append(Box(track_id=2, class_id=1, x=310., y=100., width=40., height=40., observed=True))
-    frame.image.header.stamp = selector.get_clock().now().to_msg()
+    frame.header.stamp = selector.get_clock().now().to_msg()
     selector.frame(frame)
     filt.target(selector.pub.messages[-1])
     alignment.target(filt.pub.messages[-1])
@@ -304,8 +269,8 @@ def first_nodes():
 def test_independent_task_idle_until_trigger_and_normal_selector_has_no_task(first_nodes):
     assert not hasattr(Selector, 'start_first')
     task = first_nodes[0]
-    frame = Frame()
-    frame.image.header.stamp = task.get_clock().now().to_msg()
+    frame = FrameMetadata()
+    frame.header.stamp = task.get_clock().now().to_msg()
     frame.boxes = [Box(track_id=1, class_id=0, x=100., y=100., width=40., height=40., observed=True)]
     task.frame(frame)
     assert not task.pub.messages[-1].valid

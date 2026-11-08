@@ -1,7 +1,7 @@
 import math
 import pytest
 import rclpy
-from block_interfaces.msg import Frame, Box, Target
+from block_interfaces.msg import FrameMetadata, Box, Target
 from block_perception.gripper import Gripper, calculate_angles
 
 
@@ -21,13 +21,13 @@ def node():
 
 
 def inputs(node):
-    f = Frame()
-    f.image.header.stamp = node.get_clock().now().to_msg()
-    f.image.header.frame_id = 'camera'
-    f.image.width, f.image.height = 640, 480
+    f = FrameMetadata()
+    f.header.stamp = node.get_clock().now().to_msg()
+    f.header.frame_id = 'camera'
+    f.width, f.height = 640, 480
     f.boxes = [Box(track_id=3, x=100., width=80., observed=True),
                Box(track_id=4, x=300., width=90., observed=True)]
-    t = Target(header=f.image.header, track_id=4, locked=True, valid=True, observed=True,
+    t = Target(header=f.header, track_id=4, locked=True, valid=True, observed=True,
                image_width=640, image_height=480)
     return f, t
 
@@ -61,10 +61,10 @@ def test_prediction_wrong_frame_and_timeout(node):
     node.target(t)
     assert not node.pub.messages[-1].bounds_valid
     f, t = inputs(node)
-    f.image.header.frame_id = 'other_camera'
+    f.header.frame_id = 'other_camera'
     # Headers share a Python object; restore only target's frame ID with a new header.
     from std_msgs.msg import Header
-    t.header = Header(stamp=f.image.header.stamp, frame_id='camera')
+    t.header = Header(stamp=f.header.stamp, frame_id='camera')
     node.target(t)
     node.frame(f)
     assert not node.pub.messages[-1].bounds_valid

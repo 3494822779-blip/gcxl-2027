@@ -15,11 +15,11 @@
 # 首次抓取任务
 ~/project/gcxl-2027/scripts/run_optimized.sh --first-grasp
 
-# 不启动相机或串口
-~/project/gcxl-2027/scripts/run_optimized.sh --no-camera --no-serial
+# 关闭显示和串口
+~/project/gcxl-2027/scripts/run_optimized.sh --no-display --no-serial
 ```
 
-此脚本会自动检查并提示配置MAXN功率模式和TensorRT引擎。首次使用建议按提示完成所有优化步骤。
+此脚本会自动检查并提示配置MAXN功率模式。首次使用建议按提示完成所有优化步骤。
 
 ## 独立任务：首次抓取 class_0
 
@@ -30,10 +30,10 @@
 启动首次抓取任务及其依赖节点：
 
 ```bash
-ros2 launch block_perception first_grasp.launch.py camera:=true serial:=true
+ros2 launch block_perception first_grasp.launch.py serial:=true
 ```
 
-相机和串口参数按实际设备配置；使用外部相机话题时设 `camera:=false`。该入口替代普通 `perception.launch.py`，两套入口不要同时运行，以免同时控制底盘和夹爪。
+相机和串口参数按实际设备配置；图像固定走原生 NVMM 感知链路。该入口替代普通 `perception.launch.py`，两套入口不要同时运行，以免同时控制底盘和夹爪。
 
 启动后处于等待状态，不自动抓取。在另一个已加载 ROS 和工作区环境的终端中独立触发：
 

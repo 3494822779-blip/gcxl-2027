@@ -508,94 +508,146 @@ def display_main():
 
 
 class Camera(Node):
-    """Optional USB/file source. Hardware drivers can replace this node unchanged."""
+    """USB MJPEG through V4L2; files through OpenCV. Publish the existing RGB8 interface."""
     def __init__(self):
         super().__init__('camera')
         import cv2
+        import numpy as np
         from rcl_interfaces.msg import ParameterDescriptor
         from sensor_msgs.msg import Image
-        self.cv2, self.image_type = cv2, Image
+        self.cv2, self.np, self.image_type = cv2, np, Image
         fixed = ParameterDescriptor(read_only=True)
-        source = self.declare_parameter('source', '/dev/video0', fixed).value
-        self.width = self.declare_parameter('width', 640, fixed).value
-        self.height = self.declare_parameter('height', 480, fixed).value
-        fps = self.declare_parameter('fps', 30., fixed).value
+        legacy = self.declare_parameter('exposure', None,
+                                        ParameterDescriptor(dynamic_typing=True)).value
+        if legacy is not None:
+            raise ValueError('exposure parameter has been removed; camera controls use device defaults')
+        self.undeclare_parameter('exposure')
+        self.source = self.declare_parameter('source', '/dev/video0', fixed).value
+        self.width = self.declare_parameter('width', 1280, fixed).value
+        self.height = self.declare_parameter('height', 720, fixed).value
+        self.fps = self.declare_parameter('fps', 60., fixed).value
         self.frame_id = self.declare_parameter('frame_id', 'camera_optical_frame', fixed).value
-        if self.width <= 0 or self.height <= 0 or not math.isfinite(fps) or fps <= 0:
+        if self.width <= 0 or self.height <= 0 or not math.isfinite(self.fps) or self.fps <= 0:
             raise ValueError('Invalid camera dimensions/fps')
-        # Match rune_aim's USB camera path: many UVC cameras expose a valid
-        # MJPEG mode but produce a blank/invalid stream when OpenCV selects
-        # the default raw format. Use an explicit GStreamer pipeline.
-        # A pip-installed OpenCV in ~/.local may shadow the system one and lacks
-        # GStreamer; fall back to V4L2 with MJPG forced (YUYV is only 9 fps at 720p).
-        self.source, self.fps = source, fps
-        self.is_device = isinstance(source, str) and source.startswith('/dev/video')
-        self.has_gst = 'GStreamer:                   YES' in cv2.getBuildInformation()
-        self.capture = self.open_capture()
-        if not self.capture.isOpened():
-            raise RuntimeError(f'Cannot open camera/video source: {source}')
+        self.is_device = isinstance(self.source, str) and self.source.startswith('/dev/')
         self.pub = self.create_publisher(Image, 'camera/image_raw', qos_profile_sensor_data)
-        # capture.read() can block for ~10 s when a UVC camera stalls (V4L2 select() timeout), so it
-        # runs in its own thread: the ROS executor stays responsive and shutdown is never held up.
         self.stopping = threading.Event()
+        self.cond = threading.Condition()
+        self.latest = None
+        self.read_count = self.publish_count = self.overwritten = self.read_errors = 0
+        self.decode_errors = 0
+        self.sequence_gaps = self.error_frames = 0
+        self.capture = self.open_capture()
         self.reader = threading.Thread(target=self.read_loop, name='camera-reader', daemon=True)
+        self.publisher = threading.Thread(target=self.publish_loop, name='camera-publisher', daemon=True)
+        self.publisher.start()
         self.reader.start()
+        self.stats_time = time.monotonic()
+        self.stats_counts = (0, 0)
+        self.create_timer(5., self.report_stats)
 
     def open_capture(self):
-        cv2, source, fps = self.cv2, self.source, self.fps
-        if self.is_device and self.has_gst:
-            # nvjpegdec fails caps negotiation with this UVC camera (not-negotiated); jpegdec is
-            # verified at 1280x1024@30fps with no dropped frames.
-            pipeline = (f'v4l2src device={source} ! '
-                        f'image/jpeg,width={self.width},height={self.height},framerate={int(fps)}/1 ! '
-                        'jpegdec ! videoconvert ! video/x-raw,format=BGR ! '
-                        'appsink drop=true max-buffers=1 sync=false')
-            return cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
         if self.is_device:
-            capture = cv2.VideoCapture(source, cv2.CAP_V4L2)
-            capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-            capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-            capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-            capture.set(cv2.CAP_PROP_FPS, fps)
-            # 不要设置 CAP_PROP_BUFFERSIZE=1：实测会让 1280x1024 MJPG 从 24.7fps 降到 14.8fps
-            return capture
-        return cv2.VideoCapture(source)
+            from .v4l2_capture import V4L2Capture
+            return V4L2Capture(self.source, self.width, self.height, self.fps,
+                               self.get_logger().info)
+        capture = self.cv2.VideoCapture(self.source)
+        if not capture.isOpened():
+            capture.release()
+            raise RuntimeError(f'Cannot open video source: {self.source}')
+        return capture
 
     def read_loop(self):
-        failures, last, period = 0, 0., 1. / self.fps
-        skip_count = 0
-        while not self.stopping.is_set():
-            ok, bgr = self.capture.read()
-            if self.stopping.is_set():
-                return
-            if ok:
-                failures = 0
-                # 相机可能以更高帧率运行（如720p@60fps），需要精确控制发布速率
-                # 使用0.95系数允许轻微抖动，避免意外跳帧
-                now = time.monotonic()
-                elapsed = now - last
-                if elapsed >= period * 0.95:
-                    last = now
-                    self.publish(bgr)
-                    if skip_count > 0:
-                        self.get_logger().debug(f'Published frame after skipping {skip_count}', throttle_duration_sec=5.0)
-                        skip_count = 0
-                else:
-                    skip_count += 1
-                continue
-            if not self.is_device:
-                self.get_logger().error('Video file ended; stopping image source')
-                return
-            # A USB camera that stalls or drops off the bus: reopen it, backing off up to 2 s.
-            failures += 1
-            self.get_logger().warning(f'Camera read failed ({failures}); reopening {self.source}')
+        failures, idle, last = 0, 0, 0.
+        try:
+            while not self.stopping.is_set():
+                try:
+                    if self.capture is None:
+                        self.capture = self.open_capture()
+                    if self.is_device:
+                        frame = self.capture.read()
+                        if frame is None:
+                            idle += 1
+                            if idle >= 6:
+                                raise TimeoutError('No valid camera frame for six read attempts')
+                            continue
+                    else:
+                        ok, frame = self.capture.read()
+                        if not ok:
+                            self.get_logger().info('Video file ended')
+                            return
+                        now = time.monotonic()
+                        if now - last < 0.95 / self.fps:
+                            continue
+                        last = now
+                    failures, idle = 0, 0
+                    with self.cond:
+                        self.read_count += 1
+                        if self.latest is not None:
+                            self.overwritten += 1
+                        self.latest = frame
+                        self.cond.notify()
+                except (OSError, RuntimeError, TimeoutError) as exc:
+                    if not self.is_device:
+                        raise
+                    self.read_errors += 1
+                    failures += 1
+                    self.get_logger().warning(f'Camera read/open failed: {exc}; reopening')
+                    self.close_capture()
+                    idle = 0
+                    self.stopping.wait(min(0.25 * failures, 2.))
+        finally:
+            self.close_capture()
+
+    def close_capture(self):
+        if self.capture is not None:
+            if self.is_device:
+                self.sequence_gaps += self.capture.sequence_gaps
+                self.error_frames += self.capture.error_frames
             self.capture.release()
-            self.stopping.wait(min(0.25 * failures, 2.))
-            if not self.stopping.is_set():
-                self.capture = self.open_capture()
+            self.capture = None
+
+    def publish_loop(self):
+        while not self.stopping.is_set():
+            with self.cond:
+                self.cond.wait_for(lambda: self.latest is not None or self.stopping.is_set(), 0.5)
+                if self.stopping.is_set():
+                    return
+                frame, self.latest = self.latest, None
+            if frame is None:
+                continue
+            try:
+                if self.is_device:
+                    frame = self.cv2.imdecode(self.np.frombuffer(frame, dtype=self.np.uint8),
+                                              self.cv2.IMREAD_COLOR)
+                    if frame is None or frame.shape[:2] != (self.height, self.width):
+                        raise ValueError('Invalid MJPEG frame or unexpected decoded dimensions')
+                self.publish(frame)
+                self.publish_count += 1
+            except (ValueError, self.cv2.error) as exc:
+                self.decode_errors += 1
+                self.get_logger().warning(f'Cannot decode camera frame: {exc}', throttle_duration_sec=5.)
+
+    def report_stats(self):
+        now = time.monotonic()
+        elapsed = now - self.stats_time
+        if elapsed < 1.:
+            return
+        reads, publishes = self.read_count, self.publish_count
+        capture = self.capture
+        gaps = self.sequence_gaps + (capture.sequence_gaps if self.is_device and capture else 0)
+        errors = self.error_frames + (capture.error_frames if self.is_device and capture else 0)
+        self.get_logger().info(
+            f'camera read {(reads-self.stats_counts[0])/elapsed:.1f} fps, '
+            f'publish {(publishes-self.stats_counts[1])/elapsed:.1f} fps; '
+            f'overwritten={self.overwritten}, sequence_gaps={gaps}, '
+            f'error_frames={errors}, read_errors={self.read_errors}, decode_errors={self.decode_errors}')
+        self.stats_time, self.stats_counts = now, (reads, publishes)
 
     def publish(self, bgr):
-        rgb = self.cv2.cvtColor(self.cv2.resize(bgr, (self.width, self.height)), self.cv2.COLOR_BGR2RGB)
+        if bgr.shape[:2] != (self.height, self.width):
+            bgr = self.cv2.resize(bgr, (self.width, self.height))
+        rgb = self.cv2.cvtColor(bgr, self.cv2.COLOR_BGR2RGB)
         msg = self.image_type(height=self.height, width=self.width, encoding='rgb8', step=self.width*3,
                               data=rgb.tobytes())
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -604,13 +656,12 @@ class Camera(Node):
 
     def on_stop(self):
         self.stopping.set()
-        self.reader.join(1.5)
-        # Releasing while read() is still blocked in the reader thread is unsafe; the OS closes the
-        # device when the process exits.
-        if not self.reader.is_alive():
-            self.capture.release()
-        else:
-            self.get_logger().warning('Camera reader still blocked in read(); leaving it to process exit')
+        with self.cond:
+            self.cond.notify_all()
+        self.reader.join(2.)
+        self.publisher.join(2.)
+        if self.reader.is_alive() or self.publisher.is_alive():
+            self.get_logger().warning('Camera worker still blocked; device will close on process exit')
 
 
 def camera_main(): run(Camera)

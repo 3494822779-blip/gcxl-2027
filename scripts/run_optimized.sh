@@ -92,7 +92,7 @@ echo ""
 # Source ROS环境
 cd "$PROJECT_ROOT/ros2_ws"
 source /opt/ros/humble/setup.bash
-source install/setup.bash
+source install_gcxl/setup.bash
 
 # 启动对应的launch文件
 if [ "$TASK" = "first_grasp" ]; then

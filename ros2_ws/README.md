@@ -51,6 +51,10 @@ colcon --log-base ros2_ws/log_gcxl build --base-paths ros2_ws/src \
 source ros2_ws/install_gcxl/setup.bash
 ```
 
+USB 相机使用直接 V4L2 mmap 采集 MJPEG，OpenCV 只负责解码，不再通过 `VideoCapture` 或 GStreamer 打开 USB 相机。默认请求 1280×720@60；每次打开或重连时恢复设备报告的标准图像控制默认值（先恢复自动模式，再恢复仍可写的控制项），不强制手动曝光，不做 toggle。自动模式下非活动的手动控制不会写入；相对运动和动作类控制不会执行。默认曝光下实际帧率可能低于 60。
+
+`exposure` 参数已移除，旧配置传入该参数会报错。修改源码后应构建并 source 上面的 `ros2_ws/install_gcxl/setup.bash`，不要使用旧 `install` 或项目根目录的 `install_gcxl` 副本。USB 采集与解码/发布分线程，发布端繁忙时只保留最新压缩帧；日志每五秒报告实际采集/发布帧率、覆盖帧数、驱动序号缺口和读取错误。`/camera/image_raw` 仍为 RGB8，检测/跟踪的 GStreamer/DeepStream 链路不变；视频文件继续通过 OpenCV 读取。
+
 `ros2_ws/src/block_perception/config/infer_blocks.txt` 已配置当前项目的 ONNX、独立 FP16 engine、训练模型标签和 parser 路径。迁移目录后需要同步修改这些绝对路径并重新编译。构建采用 `build_gcxl/install_gcxl`，避免复用迁移前含旧绝对路径的 CMake 缓存。
 
 重新导出和构建模型：
@@ -70,7 +74,7 @@ cd ../..
 # detector/tracker 的 DeepStream 配置路径、算法参数、串口参数），source 可填视频文件绝对路径。
 ros2 launch block_perception perception.launch.py camera:=true
 
-# 若已有 ROS 相机驱动，camera 默认 false；驱动应发布 /camera/image_raw，rgb8、640x480。
+# 若已有 ROS 相机驱动，camera 默认 false；驱动应发布 /camera/image_raw，rgb8、1280x720。
 # 图像宽高只在 perception.yaml 设置（camera/detector/tracker 三段必须一致，启动时校验）；width 必须能被 4 整除。
 # 外部驱动不满足编码时，应加独立转换节点，不修改检测节点。
 

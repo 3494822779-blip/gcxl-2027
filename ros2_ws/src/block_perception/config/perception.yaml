@@ -23,15 +23,15 @@
 camera:                            # 仅 camera:=true 时启动（内置 USB/视频文件相机）
   ros__parameters:
     source: /dev/video0            # 启动时固定；USB 设备或视频文件绝对路径
-    width: 640                     # 启动时固定；VGA 640x480
-    height: 480                    # 启动时固定；4:3
-    fps: 120.0                     # 启动时固定；MJPG 640x480 相机标称120，OpenCV 实测约99fps
+    width: 1280                    # 启动时固定；1280x720 MJPG
+    height: 720                    # 启动时固定；16:9
+    fps: 60.0                      # 启动时固定；请求60fps；曝光等控制使用设备默认，实际帧率由光照与设备决定
     frame_id: camera_optical_frame # 启动时固定
 
 detector:                          # DeepStream nvinfer/TensorRT，发布 /detections
   ros__parameters:
-    width: 640                     # 启动时固定；与相机一致
-    height: 480                    # 启动时固定
+    width: 1280                    # 启动时固定；与相机一致
+    height: 720                    # 启动时固定
     confidence_threshold: 0.75     # 在线可调 [0.01, 1]；轻微降低以平衡高分辨率下的检测
                                    # 不要在 infer 配置里调高，否则降低本阈值不能恢复已丢弃的框
     config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/infer_blocks.txt
@@ -39,14 +39,14 @@ detector:                          # DeepStream nvinfer/TensorRT，发布 /detec
 
 tracker:                           # DeepStream nvtracker/NvDCF，发布 /tracks
   ros__parameters:
-    width: 640                     # 启动时固定；匹配相机分辨率
-    height: 480                    # 启动时固定
+    width: 1280                    # 启动时固定；匹配相机分辨率
+    height: 720                    # 启动时固定
     config_file: /home/nvidia/project/gcxl-2027/ros2_ws/src/block_perception/config/tracker_blocks.yml
                                    # 启动时固定；NvDCF 匹配/状态估计参数
     tracker_library: /opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so
                                    # 启动时固定；nvtracker 插件库
-    tracker_width: 640             # 启动时固定；nvtracker 内部处理宽度
-    tracker_height: 480            # 启动时固定；与输入一致（须为32的倍数）
+    tracker_width: 960             # 启动时固定；nvtracker 内部处理宽度
+    tracker_height: 544            # 启动时固定；内部处理尺寸（须为32的倍数）
 
 # ---------- 算法参数（在线可调） ----------
 

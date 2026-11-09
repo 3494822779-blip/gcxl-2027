@@ -193,7 +193,7 @@ def test_positive_pitch_tolerance_and_stale_feedback(rig):
     alignment.set_parameters([Parameter('camera_servo', value=True)])
     for pitch, ready in ((38., False), (38.4, True), (40., True), (41.6, True), (42., True), (44.3, True), (55., True)):
         target = Target(locked=True, valid=True, observed=True, track_id=9, first_grasp_id=1,
-            class_id=2, image_width=640, image_height=480, x=320., y=384.)
+            class_id=2, image_width=640, image_height=480, x=320., y=240.)
         target.header.stamp = alignment.get_clock().now().to_msg()
         alignment.target(target)
         feedback = JointState(name=['camera_pitch'], position=[math.radians(pitch)])
@@ -228,7 +228,7 @@ def test_stale_target_command_keeps_identity_and_clears_ready_phase(rig):
     from block_interfaces.msg import Target
     alignment, n = rig[2], rig[3]
     m = Target(locked=True, observed=True, valid=True, track_id=9, first_grasp_id=1,
-               class_id=2, image_width=640, image_height=480, x=320., y=384.)
+               class_id=2, image_width=640, image_height=480, x=320., y=240.)
     m.header.stamp = alignment.get_clock().now().to_msg()
     alignment.target(m)
     alignment.tick()
@@ -345,7 +345,7 @@ def test_recorded_44_degree_feedback_triggers_and_closes_grasp(rig):
     alignment.joints(feedback)
     n.joints(feedback)
     target = Target(locked=True, observed=True, valid=True, track_id=9, first_grasp_id=1,
-        class_id=2, image_width=640, image_height=480, x=320., y=384.)
+        class_id=2, image_width=640, image_height=480, x=320., y=240.)
     target.header.stamp = alignment.get_clock().now().to_msg()
     alignment.target(target)
     alignment.tick()
@@ -371,3 +371,41 @@ def test_overshoot_does_not_bypass_missing_pitch_feedback(rig):
     n.joints(JointState(name=['camera_pitch'], position=[math.radians(44.3)]))
     n.pitch_time -= 1.
     assert compute(n)[2:4] == (48.3, 48.3)
+
+
+def test_lost_target_search_reverses_and_stops_on_reacquisition(rig):
+    _, _, _, n, _ = rig
+    n.set_parameters([Parameter('camera_servo', value=True)])
+    n.formal_track_id = 9
+    n.cam_target = 89.
+    n.cmd = None
+    n.cam_time = 100.
+    wheels = n.compute(100.1)
+    assert wheels[:2] == (0., 0.)
+    assert n.cam_target == 90. and n.search_direction == -1
+    n.compute(100.2)
+    assert n.cam_target < 90.
+    assert n.grasp_blocker(100.2) == 'searching_up'
+    send(n)
+    compute(n)
+    assert n.search_direction == 0
+    n.cmd = None
+    n.compute(n.cam_time + .1)
+    assert n.search_direction != 0
+    n.action_api.hold()
+    angle = n.cam_target
+    n.compute(n.cam_time + .1)
+    assert n.cam_target == angle and n.search_direction == 0
+
+
+def test_no_search_before_lock_or_with_fixed_camera(rig):
+    _, _, _, n, _ = rig
+    n.set_parameters([Parameter('camera_servo', value=True)])
+    n.cam_target = 30.
+    n.cam_time = 100.
+    n.compute(100.1)
+    assert n.cam_target == 30. and n.search_direction == 0
+    n.formal_track_id = 9
+    n.set_parameters([Parameter('camera_servo', value=False)])
+    n.compute(100.2)
+    assert n.search_direction == 0

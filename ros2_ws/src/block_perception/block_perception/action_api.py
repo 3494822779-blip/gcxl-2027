@@ -144,6 +144,7 @@ class ActionAPI:
     def hold(self):
         n = self.node
         n.state = 'hold'
+        n.search_direction = 0
         n.cmd = n.grip = None
         n.resume_after = n.get_clock().now().nanoseconds * 1e-9
 

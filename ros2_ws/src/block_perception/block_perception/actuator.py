@@ -73,7 +73,7 @@ class Actuator(ConfigNode):
         super().__init__('actuator')
         self.configure(dict(camera_servo=False, camera_fixed_deg=0.,
                             track_width=0.2, wheel_speed_scale=1000., max_wheel_speed=0.5, min_turn_speed=0.1,
-                            cam_min_deg=0., cam_max_deg=90.,
+                            cam_min_deg=0., cam_max_deg=90., search_pitch_speed_deg=20.,
                             grasp_pitch_deg=40., grasp_pitch_tol=math.radians(1.7), claw_open_pitch_deg=20.,
                             claw_init_deg=0., claw_max_deg=90., claw_min_deg=-30.,
                             sweep_claw_deg=-30., sweep_overlap=0.5, sweep_weight=0.2,
@@ -185,6 +185,9 @@ class Actuator(ConfigNode):
             self.opened_at = None
             self.memory.begin_sweep(msg.track_id, msg.class_id, msg.obstacle_id, msg.sweep_side)
             self.publish_memory()
+        if self.search_direction:
+            self.dbg.event('target_search', phase='reacquired', track_id=msg.track_id)
+            self.search_direction = 0
         reason = self.grasp_blocker(now)
         if reason:
             self.dbg.event('grasp_wait', every=0.5, reason=reason, track_id=msg.track_id,
@@ -197,6 +200,8 @@ class Actuator(ConfigNode):
     def grasp_blocker(self, now):
         """Report actual executor admission, rather than the last visual readiness label."""
         msg, g, p = self.cmd, self.grip, self.settings
+        if self.search_direction:
+            return 'searching_down' if self.search_direction > 0 else 'searching_up'
         if msg is None:
             return 'waiting_for_target'
         if not self.fresh(msg, now) or not msg.valid:
@@ -225,6 +230,7 @@ class Actuator(ConfigNode):
         self.sweep = None
         self.last_swept_obstacle_id = 0
         self.sweep_last_time = None
+        self.search_direction = 0
         self.formal_track_id = None
         self.opened_at = None
         self.opening_angles = None
@@ -316,6 +322,24 @@ class Actuator(ConfigNode):
             self.sweep_last_time = steady
             valid = self.fresh(c, now) and c.valid and (not c.first_grasp_id or not c.predicted)
             sweeping = self.sweep is not None and not self.sweep.done
+            if self.action_api.allows_grasp() and self.formal_track_id is not None:
+                valid = valid and c.track_id == self.formal_track_id
+            if not valid and servo and self.action_api.allows_grasp() and self.formal_track_id is not None:
+                if not self.search_direction:
+                    self.search_direction = 1
+                    self.dbg.event('target_search', phase='searching_down', track_id=self.formal_track_id)
+                self.cam_target += self.search_direction * p['search_pitch_speed_deg'] * dt
+                limit = p['cam_max_deg'] if self.search_direction > 0 else p['cam_min_deg']
+                if ((self.search_direction > 0 and self.cam_target >= limit) or
+                        (self.search_direction < 0 and self.cam_target <= limit)):
+                    self.cam_target = limit
+                    self.search_direction *= -1
+                    self.dbg.event('target_search', phase='searching_down' if self.search_direction > 0 else 'searching_up',
+                                   track_id=self.formal_track_id)
+            else:
+                if self.search_direction:
+                    self.dbg.event('target_search', phase='reacquired', track_id=self.formal_track_id)
+                self.search_direction = 0
             if valid:
                 bias = 0.
                 if sweeping:

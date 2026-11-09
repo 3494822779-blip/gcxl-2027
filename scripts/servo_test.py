@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
-"""Move the camera pitch servo between -90 and +90 degrees to check wiring and
-the angle sign (protocol: docs/serial_protocol.md).
+"""Send -30 degrees to the left claw, then to the right claw.
 
-Keep the camera linkage clear. The claws and wheels remain stopped.
-Standalone (no ROS). Stop the ROS serial_node first: only one process can use the port.
+Standalone (no ROS). Stop serial_node before using the same port.
+Each stage sends CMD frames at 20 Hz for --seconds (default 2):
+  1. left = -30 deg, right = 0 deg
+  2. left = -30 deg, right = -30 deg
+Wheels stay stopped; camera uses --cp (default 0 deg).
+Afterwards all servos return to 0 deg, including on Ctrl+C or errors.
+--keep holds the most recently commanded angles instead.
+--loop repeats the sequence with a home stage between cycles.
 
-Sends $CMD frames at 20 Hz with the wheels and claws stopped and the camera at
-the requested angle, then ends by sending home frames (camera back to 0 deg), also on Ctrl+C
-or an error. --keep holds the last angles instead of going home.
-
-Angles in degrees, same convention as docs/serial_protocol.md:
-  cp: camera pitch, [-90, 90], positive = up, 0 = home
-(Limits must match gripper/actuator in config/perception.yaml.)
-
-  scripts/servo_test.py --port /dev/ttyACM0 --cp 90 --seconds 3            # camera up
-  scripts/servo_test.py --port /dev/ttyACM0 --cp -90 --seconds 3           # camera down
+  scripts/servo_test.py --port /dev/ttyACM0 --seconds 2 --keep
 """
 import argparse
 import os
@@ -68,8 +64,8 @@ def main():
         sys.exit('--seconds must be in (0, 10]')
 
     print(f'port {a.port} @ {a.baud}, camera cp={a.cp:.1f} deg, {a.seconds:g}s')
-    print('Only the camera pitch servo will move. Ctrl+C stops.')
-    print('First CMD:', encode(0, 0., 0., 0., 0., a.cp))
+    print('Left claw -30 deg first, then right claw -30 deg. Ctrl+C stops.')
+    print('First CMD:', encode(0, 0., 0., -30., 0., a.cp))
     if not a.yes and input('Press Enter to start (anything else + Enter to abort): ').strip():
         sys.exit('aborted')
 
@@ -78,24 +74,30 @@ def main():
     except OSError as e:
         sys.exit(f'FAIL: cannot open {a.port}: {e} (port busy, wrong name or no permission?)')
     tx = Sender(fd)
+    last_angles = (0., 0., 0.)
     try:
-        if a.loop:
-            n = 0
-            while True:
-                n += 1
-                print(f'cycle {n}: target')
-                tx.hold(0., 0., a.cp, a.seconds)
-                print(f'cycle {n}: home')
-                tx.hold(0., 0., 0., a.seconds)
-        tx.hold(0., 0., a.cp, a.seconds)
+        n = 0
+        while True:
+            n += 1
+            print(f'cycle {n}: left claw -30 deg')
+            last_angles = (-30., 0., a.cp)
+            tx.hold(*last_angles, a.seconds)
+            print(f'cycle {n}: right claw -30 deg (left stays -30 deg)')
+            last_angles = (-30., -30., a.cp)
+            tx.hold(*last_angles, a.seconds)
+            if not a.loop:
+                break
+            print(f'cycle {n}: home')
+            last_angles = (0., 0., 0.)
+            tx.hold(*last_angles, a.seconds)
         print('done')
     except KeyboardInterrupt:
         print('\ninterrupted')
     finally:
-        end_lg, end_rg, end_cp = (0., 0., a.cp) if a.keep else (0., 0., 0.)
+        end_lg, end_rg, end_cp = last_angles if a.keep else (0., 0., 0.)
         tx.stop(end_lg, end_rg, end_cp)
         os.close(fd)
-        print(f'stop frames sent' + (f' (holding camera cp={end_cp:.1f})' if a.keep
+        print(f'stop frames sent' + (f' (holding lg={end_lg:.1f}, rg={end_rg:.1f}, cp={end_cp:.1f})' if a.keep
               else ' (servos back to 0 deg)'))
 
 

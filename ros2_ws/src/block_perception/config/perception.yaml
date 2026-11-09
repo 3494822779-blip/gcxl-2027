@@ -104,9 +104,10 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     max_wheel_speed: 0.5           # m/s 限幅，×scale 即下位机收到的轮速上限
     min_turn_speed: 0.17            # m/s；只要有转向指令，每侧轮子的转向分量至少这么大（×scale 即下位机收到的值），
                                    # 避免小偏差时左右轮差太小、电机不动；0 = 关闭
+    search_pitch_speed_deg: 20.0   # 丢失原目标时先低头再抬头循环搜索，度/秒
     cam_min_deg: 0.0               # 相机舵机角度指令下限（度，0=回正）
     cam_max_deg: 90.0              # 上限（度，正=低头）；alignment 的俯仰速度在此范围内积分成角度
-    claw_open_pitch_deg: 18.0      # 度；实际相机低头达到此角度，按当时宽度只张爪一次
+    claw_open_pitch_deg: 22.0      # 度；实际相机低头达到此角度，按当时宽度只张爪一次
     grasp_pitch_deg: 45.0           # 抓取时相机先低头到的目标角（度，正=低头），到位后夹爪才合拢；
                                    # 须与 alignment 的 grasp_pitch 同一角度（40° ≈ 0.69813 rad），
                                    # 且须在 [cam_min_deg, cam_max_deg] 内；按实际抓取姿态标定
@@ -126,7 +127,7 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     sweep_weight: 0.2             # 初始转向权重
     sweep_near_multiplier: 2.0    # 两框实际有面积重叠时的权重倍数
     sweep_max_yaw_rate: 1.0       # rad/s，乘权重后作为反向转向偏置
-    sweep_tau_sec: 0.33           # 秒，指数衰减时间常数
+    sweep_tau_sec: 0.23           # 秒，指数衰减时间常数
     sweep_duration_sec: 1.0       # 秒，有效目标控制时间；结束偏置归零
     max_yaw_rate: 2.0             # rad/s，视觉转向与扫走偏置合成上限
     discard_distance_m: 0.2         # x，米：后退及返回前进的距离，均使用此值

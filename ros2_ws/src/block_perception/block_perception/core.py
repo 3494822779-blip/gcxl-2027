@@ -131,7 +131,7 @@ def validate(values):
 
     if values.get('discard_enabled'):
         raise ValueError('discard is disabled')
-    for name in ('sweep_tau_sec', 'sweep_duration_sec', 'sweep_max_yaw_rate', 'sweep_near_multiplier'):
+    for name in ('search_pitch_speed_deg', 'sweep_tau_sec', 'sweep_duration_sec', 'sweep_max_yaw_rate', 'sweep_near_multiplier'):
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
     for name in ('sweep_weight', 'sweep_overlap'):

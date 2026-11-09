@@ -175,7 +175,8 @@ class Actuator(ConfigNode):
         if msg.track_id != self.formal_track_id:
             self.cmd = None
             return
-        if self.sweep is None and msg.sweep_side in (-1, 1):
+        if (self.sweep is None and msg.sweep_side in (-1, 1)
+                and msg.obstacle_id != self.last_swept_obstacle_id):
             self.sweep = Sweep(msg.sweep_side, msg.obstacle_overlap, msg.obstacle_near, self.settings)
             if msg.sweep_side < 0:
                 self.left_claw = self.sweep.angle
@@ -222,6 +223,7 @@ class Actuator(ConfigNode):
 
     def reset_sweep(self):
         self.sweep = None
+        self.last_swept_obstacle_id = 0
         self.sweep_last_time = None
         self.formal_track_id = None
         self.opened_at = None
@@ -320,6 +322,7 @@ class Actuator(ConfigNode):
                     self.sweep.advance(step)
                     bias = self.sweep.yaw()
                     if self.sweep.done:
+                        self.last_swept_obstacle_id = c.obstacle_id
                         self.memory.complete_sweep()
                         self.opened_at = None
                 # Apply minimum turn to the visual correction only. The sweep bias must

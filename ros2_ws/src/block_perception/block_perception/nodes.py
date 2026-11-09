@@ -170,7 +170,7 @@ class Selector(ConfigNode):
                     out.obstacle_id = other.track_id
             out.class_id = b.class_id
             out.raw_x = out.x = b.x + b.width / 2
-            out.raw_y = out.y = b.y + b.height  # bottom edge, not centre
+            out.raw_y = out.y = b.y + b.height / 2  # target centre for vertical alignment
             out.last_observed = msg.header.stamp
         self.pub.publish(out)
 
@@ -224,7 +224,7 @@ class Alignment(ConfigNode):
     def __init__(self):
         super().__init__('alignment')
         self.configure(dict(camera_servo=False,
-                            deadzone_x=0.04, deadzone_y=0.1, bottom_target=0.8,
+                            deadzone_x=0.04, deadzone_y=0.1, bottom_target=0.5,
                             forward_speed=0.5, forward_max_error_x=0.3, grasp_error_x=0.15,
                             yaw_near_weight=0.2, yaw_center_weight=0.3, yaw_full_error_x=0.5,
                             yaw_gain=-1.0, pitch_gain=1.5,

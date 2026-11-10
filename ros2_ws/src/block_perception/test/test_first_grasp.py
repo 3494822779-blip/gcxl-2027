@@ -16,13 +16,13 @@ def test_explicit_class_and_nearest_real_target():
     assert candidates([box(1, 2, w=0.), box(2, 2, x=float('nan'))], 2) == []
 
 
-def test_foreground_only_largest_horizontal_overlap_and_center_tie():
+def test_foreground_only_nearest_obstacle_and_center_tie():
     target = box(1, 0)
     assert obstacle_for(target, [target, box(2, 1, y=20.)]) is None
     assert obstacle_for(target, [box(2, 1, x=180., y=300.)]) is None
     small, large = box(2, 1, x=160., y=400.), box(3, 1, x=110., y=300.)
     b, side, fraction, near = obstacle_for(target, [small, large])
-    assert b == large and side == 1 and fraction == pytest.approx(70/80) and not near
+    assert b == small and side == 1 and fraction == pytest.approx(20/80) and not near
     b, side, fraction, near = obstacle_for(target, [box(4, 1, y=220.)])
     assert side == -1 and fraction == 1. and near
     assert obstacle_for(target, [box(4, 1, y=220., observed=False)]) is None

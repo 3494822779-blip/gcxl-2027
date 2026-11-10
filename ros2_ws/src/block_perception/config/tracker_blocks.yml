@@ -3,7 +3,7 @@
 BaseConfig:
   minDetectorConfidence: 0.01
 TargetManagement:
-  enableBboxUnClipping: 0
+  enableBboxUnClipping: 1              # 目标部分出画面时按完整尺寸跟踪，避免框被裁剪后匹配失败而丢失
   preserveStreamUpdateOrder: 1
   maxTargetsPerStream: 64
   minIouDiff4NewTarget: 0.65           # 从0.7降低，更快建立新跟踪

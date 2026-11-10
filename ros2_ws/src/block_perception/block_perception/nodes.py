@@ -112,8 +112,8 @@ class Selector(ConfigNode):
             self.last_task_id = self.first_id = msg.task_id
             self.target_class = msg.target_class_id
             self.task_active = True
-            # Rebind is kept on: the tracker re-IDs a block that touches the image border. Only same-class,
-            # overlapping (rebind_iou) boxes within rebind_timeout can take over.
+            # Rebinding follows the same block when the tracker re-creates it under a new ID
+            # (e.g. at the image border); the actuator adopts the rebound ID.
             self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
             self.last_stamp = msg.task_id * 1e-9
         elif msg.task_id == self.first_id:
@@ -231,7 +231,8 @@ class Alignment(ConfigNode):
                             max_yaw_rate=2.0, max_pitch_rate=0.2, grasp_pitch=math.radians(40.),
                             pitch_timeout=0.25, input_timeout=0.25, hold_seconds=0.3,
                             reverse_speed=0.1, grasp_pitch_tol=math.radians(1.7),
-                            pitch_joint='camera_pitch'))
+                            pitch_joint='camera_pitch', approach_min_speed=0.1,
+                            approach_slow_pitch_deg=15., too_close_y=0.9))
         self.target_msg = None
         self.pitch = None
         self.pitch_time = None
@@ -302,6 +303,9 @@ class Alignment(ConfigNode):
             out.track_id, out.class_id = m.track_id, m.class_id
         fresh = m is not None and 0 <= t - seconds(m.header.stamp) <= p['input_timeout']
         if fresh and m.valid and m.locked and m.image_width > 0 and m.image_height > 0 and all(math.isfinite(v) for v in [m.x, m.y]):
+            # A controller tick is not a new observation. Preserve acquisition time
+            # so TTL and post-sweep decisions cannot be renewed from an old frame.
+            out.header.stamp = m.header.stamp
             out.header.frame_id = m.header.frame_id
             out.track_id, out.valid, out.predicted = m.track_id, True, not m.observed
             out.first_grasp_id, out.clearance = m.first_grasp_id, m.clearance
@@ -337,15 +341,21 @@ class Alignment(ConfigNode):
                                    observed=m.observed,
                                    pitch_fresh=pitch_fresh,
                                    pitch_current=round(self.pitch, 3) if self.pitch is not None else None,
-                                   pitch_required=round(p['grasp_pitch'], 3),
+                                   pitch_required=round(p['grasp_pitch'], 3), track_id=m.track_id, task_id=m.first_grasp_id,
                                    pitch_ok=self.pitch >= p['grasp_pitch'] - p['grasp_pitch_tol'] if self.pitch is not None else False,
                                    ready=ready,
                                    hold_time=round(t - self.hold_start, 2) if self.hold_start else 0)
                 # Camera not yet down to the grasp angle: drive forward (once roughly centred) so the
                 # block's bottom edge drops in the image and the camera can keep tilting down.
                 if pitch_fresh and self.pitch < p['grasp_pitch'] - p['grasp_pitch_tol'] and centred:
-                    out.forward_speed = p['forward_speed']
+                    remaining = math.degrees(p['grasp_pitch'] - p['grasp_pitch_tol'] - self.pitch)
+                    weight = min(1., max(0., remaining / p['approach_slow_pitch_deg']))
+                    out.forward_speed = min(p['forward_speed'], p['approach_min_speed'] +
+                        (p['forward_speed'] - p['approach_min_speed']) * weight)
                     out.reason = 'approaching'
+                    if m.y / m.image_height >= p['too_close_y']:
+                        out.forward_speed = out.yaw_rate = 0.
+                        out.reason = 'too_close_waiting_pitch'
                 elif out.aligned:
                     out.reason = 'aligned_waiting_pitch_or_hold'
             else:

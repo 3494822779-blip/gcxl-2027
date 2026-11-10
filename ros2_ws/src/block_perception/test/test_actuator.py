@@ -15,7 +15,7 @@ def node():
     if n.auto_timer is not None:
         n.auto_timer.cancel()
     n.action_api.allows_command = lambda msg: True
-    n.action_api.allows_grasp = lambda: False
+    n.action_api.allows_grasp = lambda: True
     n.set_parameters_atomically([Parameter('cam_min_deg', value=-15.),
         Parameter('cam_max_deg', value=30.), Parameter('grasp_pitch_deg', value=-15.),
         Parameter('right_claw_close_deg', value=0.)])
@@ -28,11 +28,19 @@ def node():
 @pytest.fixture
 def servo(node):
     assert node.set_parameters_atomically([Parameter('camera_servo', value=True)]).successful
+    feedback(node, 0.)
+    node.cam_target = 0.
     return node
 
 
 def now(n):
     return n.get_clock().now().nanoseconds * 1e-9
+
+
+def feedback(n, deg):
+    msg = JointState(name=['camera_pitch'], position=[math.radians(deg)])
+    msg.header.stamp = n.get_clock().now().to_msg()
+    n.joints(msg)
 
 
 def cmd(n, **kw):
@@ -71,7 +79,7 @@ def test_fixed_camera_sends_constant_angle_and_grasp_closes_claws(node):
     lw, rw, lg, rg, cp = node.compute(now(node) + .05)
     assert rw > lw and lg == rg == 0. and cp == 5.
     assert node.compute(now(node) + 100.) == (0., 0., 0., 0., 5.)   # stale command: stop, same cp
-    node.begin_grasp(cmd(node, grasp_request=True))
+    node.begin_grasp()
     assert node.state == 'grasp'
     assert node.compute(now(node)) == (0., 0., 25., 25., 5.)   # no camera phase: claws close at once
     node.close_time -= 1.
@@ -103,6 +111,7 @@ def test_servo_track_integrates_pitch_rate_into_angle_and_clamps(servo):
     for i in range(2, 400):
         c.header.stamp.sec, c.header.stamp.nanosec = int((t + .05 * i) // 1), int(((t + .05 * i) % 1) * 1e9)
         node.command(c)   # keep the command fresh at simulated time
+        node.pitch_time = t + .05 * i  # simulated fresh position feedback
         out = node.compute(t + .05 * i)
     assert out[4] == -15.   # clamped at cam_min_deg
     stale = node.compute(t + 100.)
@@ -110,21 +119,22 @@ def test_servo_track_integrates_pitch_rate_into_angle_and_clamps(servo):
 
 
 def test_servo_camera_starts_from_feedback(servo):
-    servo.joints(JointState(name=['camera_pitch'], position=[math.radians(-10.)]))
+    feedback(servo, -10.)
+    servo.cam_target = None
     assert servo.compute(now(servo))[4] == pytest.approx(-10.)
 
 
 def test_servo_grasp_pitches_down_then_closes_then_homes(servo):
     node = servo
     node.set_parameters([Parameter('discard_enabled', value=False), Parameter('left_claw_close_deg', value=25.), Parameter('right_claw_close_deg', value=25.)])
-    node.begin_grasp(cmd(node, grasp_request=True))
+    node.begin_grasp()
     assert node.state == 'grasp'
     # Phase 1: camera commanded down to the grasp angle; claws stay open at the initial angle.
-    node.joints(JointState(name=['camera_pitch'], position=[-.3]))
+    feedback(node, -16.9)
     lw, rw, lg, rg, cp = node.compute(now(node))
     assert lw == rw == 0. and lg == rg == 0. and cp == -15.
     # Phase 2: pitch reaches the grasp angle -> claws close.
-    node.joints(JointState(name=['camera_pitch'], position=[math.radians(-15.)]))
+    feedback(node, -15.)
     assert node.compute(now(node))[2:5] == (25., 25., -15.)
     # Phase 3: settle elapses -> done; camera commanded back home.
     node.close_time -= 1.
@@ -143,11 +153,13 @@ def test_command_frame_and_feedback_roundtrip():
 
 
 def test_serial_rx_reassembles_lines_and_sets_pitch(node):
-    line = '$FB,1,-30.0*' + checksum('FB,1,-30.0') + '\n'
+    line = '$FB,1,-10.0*' + checksum('FB,1,-10.0') + '\n'
     node.serial_rx(String(data=line[:6]))
     assert node.pitch is None
     node.serial_rx(String(data=line[6:]))
-    assert node.pitch == pytest.approx(math.radians(-30.))
+    assert node.pitch is None  # first frame establishes the feedback sequence baseline
+    node.serial_rx(String(data='$FB,2,-10.0*' + checksum('FB,2,-10.0') + '\n'))
+    assert node.pitch == pytest.approx(math.radians(-10.))
 
 
 @pytest.mark.parametrize('name,value', [('left_claw_close_deg', -1.),
@@ -158,7 +170,7 @@ def test_closure_angle_limits(node, name, value):
 
 def test_closure_parameters_snapshot_for_entire_grasp(node):
     node.set_parameters([Parameter('right_claw_close_deg', value=12.), Parameter('discard_enabled', value=False)])
-    node.begin_grasp(cmd(node, grasp_request=True))
+    node.begin_grasp()
     node.set_parameters([Parameter('right_claw_close_deg', value=19.)])
     assert node.compute(now(node))[2:4] == (0., 12.)
     assert node.memory.grasp['right_close_deg'] == 12.
@@ -187,7 +199,7 @@ def test_config_survives_node_restart_but_task_memory_does_not(tmp_path):
             assert n.compute(now(n))[2:4] == (0., 13.)
             n.claw = 90.  # a temporary opening must not rewrite the persistent configuration
         finally:
-            n.action_api.server.destroy()
+            n.action_api.destroy()
             n.destroy_node()
             rclpy.shutdown()
     assert sessions[0] != sessions[1]

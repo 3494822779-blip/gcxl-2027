@@ -14,7 +14,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 
 ## 控制流程与对应参数
 
-相机目前不能调俯仰，默认 `camera_servo: false`（alignment 和 actuator 两节必须一致）。舵机相关代码和参数都保留，把它改成 `true` 即恢复舵机模式。
+节点内置 `camera_servo` 默认为 false，当前项目 YAML 已在 alignment 和 actuator 同时设为 true。下方旧参数表的内置默认值与项目配置可能不同；运行值以 YAML 和节点参数为准，动作规则以 [动作说明](project_actions.md) 为准。
 
 1. 选目标：下边缘离画面底最近的框，锁定 track_id；追踪器给同一物块换 ID 时锁定会跟过去 → `rebind_iou`、`rebind_timeout`。
 2. 底盘转向：框中心 x 对准画面中心 → `deadzone_x`、`yaw_gain`、`max_yaw_rate`、`track_width`。
@@ -27,7 +27,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 
 ## selector（目标选择与锁定，在线可调）
 
-下列重新绑定参数只用于单独 align。目标型抓取严格保持原编号，编号丢失时停车等待，不重新绑定。
+下列重新绑定参数用于 align 和目标型抓取，目标型任务启动时固定本次规则。重新绑定仅凭同类别框的几何重叠推断身份，不能保证物理身份相同。
 
 | 参数 | 默认 | 单位 | 说明 |
 |---|---|---|---|
@@ -188,3 +188,25 @@ source install_gcxl/setup.bash
 `/robot/memory`（`std_msgs/String`，JSON）提供最新决策状态，晚加入的订阅者也能收到；
 `/robot/memory/get`（`std_srvs/Trigger`）返回 JSON 完整历史。
 状态包含任务、最近抓取/扫走（旧丢弃字段保留兼容）、夹持指令状态和中断记录，所有结果均不代表物理夹持确认。
+
+## 动作保护参数（2026-11-10）
+
+以下为当前 YAML 或新增参数的初始值，机械相关参数仍需实车标定。软件急停与复位服务见 [动作说明](project_actions.md)。本次修改后需同时重建 `block_perception` 和 `serial_minimal`。
+
+| 节点/参数 | 初始值 | 含义 |
+|---|---|---|
+| alignment.approach_min_speed | 0.1 m/s | 接近抓取俯仰门槛时的低速 |
+| alignment.approach_slow_pitch_deg | 15° | 俯仰距离门槛小于此值时逐步减速 |
+| alignment.too_close_y | 0.9 | 舵机模式目标中心达到画面此高度比例时停车等待 |
+| actuator.input_timeout | 0.25 s | 接收端 TTL 上限，另检查本地单调时钟年龄 |
+| actuator.serial_health_timeout | 0.25 s | 桥接健康消息最大接收年龄 |
+| actuator.require_serial_health | launch 的 serial 开关 | 启动只读；手动单独运行 actuator 时默认 false，连接实车须显式设置 true |
+| actuator.pitch_feedback_margin_deg | 2° | 相机配置范围外允许的测量余量，不放宽目标角度范围 |
+| actuator.feedback_reconnect_sec | 1 s | 反馈中断后允许重建序号基准的间隔 |
+| actuator.max_sweep_attempts | 2 | 同一障碍的扫走次数上限 |
+| actuator.max_sweeps | 8 | 每任务扫走次数总上限，避免编号变化绕过限制 |
+| actuator.max_tracking_motion_sec | 10 s | 对准、接近和扫走累计底盘运动指令时间预算，等待不计入 |
+| actuator.max_pitch_rate | 0.6 rad/s | 接收端允许的俯仰速度，与 alignment 的上限保持一致 |
+| serial_node.write_timeout | 0.1 s | 帧从入队到完整写出的期限，启动时固定 |
+
+越界控制量、运动/扫障预算耗尽、串口错误或串口健康超时会锁存停车；单纯目标或相机反馈过期会先停车等待。复位不会自动重启旧任务。

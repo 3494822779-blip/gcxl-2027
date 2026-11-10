@@ -64,7 +64,8 @@ def launch_nodes(context):
         if name == 'actuator':
             node_params = params + [{'task_mode': task, 'autonomous': ParameterValue(
                 LaunchConfiguration('autonomous'), value_type=bool),
-                'autonomous_target_class': target_class}]
+                'autonomous_target_class': target_class,
+                'require_serial_health': ParameterValue(LaunchConfiguration('serial'), value_type=bool)}]
         actions.append(Node(package='block_perception', executable=name, name=name,
                             parameters=node_params, output='screen'))
     actions.append(Node(package='serial_minimal', executable='serial_node', name='serial_node',

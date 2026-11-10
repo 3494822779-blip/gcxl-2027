@@ -28,6 +28,9 @@ class ActionAPI:
         self.completed = False
         self.first_id = 0
         self.last_first_id = 0
+        self.destroyed = False
+        self.generation = 0
+        self.admissions = {}
         self.target_request = node.create_publisher(TargetTask, 'task/target_grasp',
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.reset = node.create_publisher(Bool, 'target/reset', 10)
@@ -37,6 +40,12 @@ class ActionAPI:
                                    goal_callback=self.accept,
                                    cancel_callback=self.cancel,
                                    callback_group=ReentrantCallbackGroup())
+
+    def destroy(self):
+        if not self.destroyed:
+            self.destroyed = True
+            self.client.destroy()
+            self.server.destroy()
 
     def submit(self, operation, **kwargs):
         """Compatibility and autonomous entry points also use real ROS Action goals."""
@@ -78,18 +87,41 @@ class ActionAPI:
         except ValueError as exc:
             self.node.get_logger().warning(f'Action rejected: {exc}')
             return GoalResponse.REJECT
+        if goal.operation == 'stop':
+            self.interrupt('stopped by stop action')
+            return GoalResponse.ACCEPT
+        if self.node.safety_reason or not self.node.link_ready():
+            return GoalResponse.REJECT
         # Reserve during acceptance, not execute: two simultaneous goals cannot both win.
         if self.reserved or (self.node.state == 'grasp' and goal.operation != 'stop'):
             return GoalResponse.REJECT
         if self.node.auto_timer is not None:
             self.node.auto_timer.cancel()
         self.reserved = True
+        self.admissions[id(goal)] = self.generation
         return GoalResponse.ACCEPT
+
+    def interrupt(self, reason):
+        """Invalidate accepted-but-not-executed goals as well as the active task."""
+        self.generation += 1
+        if self.node.auto_timer is not None:
+            self.node.auto_timer.cancel()
+        self.finish(False, reason)
+        self.hold()
+        self.node.send_stop()
 
     def cancel(self, handle):
         return CancelResponse.ACCEPT
 
     async def execute(self, handle):
+        if handle.request.operation == 'stop':
+            handle.succeed()
+            return RobotTask.Result(success=True, message='wheels stopped; servo targets held')
+        admission = self.admissions.pop(id(handle.request), -1)
+        if admission != self.generation or self.node.safety_reason or not self.node.link_ready():
+            handle.abort()
+            self.reserved = False
+            return RobotTask.Result(success=False, message='interrupted before execution')
         self.handle, self.goal = handle, handle.request
         self.future = Future()
         self.started = time.monotonic()
@@ -136,9 +168,11 @@ class ActionAPI:
                 n.cam_target = g.angle_deg
         except ValueError as exc:
             self.finish(False, str(exc))
-        result = await self.future
-        self.handle = self.goal = self.future = None
-        self.reserved = False
+        future = self.future
+        result = await future
+        if self.handle is handle:
+            self.handle = self.goal = self.future = None
+            self.reserved = False
         return result
 
     def hold(self):
@@ -146,6 +180,7 @@ class ActionAPI:
         n.state = 'hold'
         n.search_direction = 0
         n.cmd = n.grip = None
+        n.cmd_stamp = None
         n.resume_after = n.get_clock().now().nanoseconds * 1e-9
 
     def finish(self, success, message, canceled=False, status=None):
@@ -158,6 +193,8 @@ class ActionAPI:
                              phase, message)
         n.publish_memory()
         self.hold()
+        if not success:
+            n.send_stop()
         if success and n.settings['camera_servo'] and (self.goal.operation == 'grasp' or self.goal.operation in TARGET_OPERATIONS):
             n.cam_target = math.degrees(n.settings['pitch_home'])
         if self.goal.operation in TARGET_OPERATIONS:
@@ -173,6 +210,8 @@ class ActionAPI:
     def current_phase(self):
         n = self.node
         if n.state == 'grasp':
+            if n.close_time is None and not n.close_target_ready(n.get_clock().now().nanoseconds * 1e-9):
+                return 'grasp_target_lost'
             return 'claw_close' if n.close_time is not None else 'grasp_pitch'
         if n.state == 'track':
             now = n.get_clock().now().nanoseconds * 1e-9
@@ -196,6 +235,9 @@ class ActionAPI:
             return None
         if elapsed >= self.timeout:
             self.finish(False, 'timeout; wheels stopped, servo targets held', status='timeout')
+            return None
+        if n.safety_reason or not n.link_ready():
+            n.trip_safety(n.safety_reason or 'serial_link_lost')
             return None
         phase = self.current_phase()
         n.memory.phase(phase)
@@ -222,7 +264,7 @@ class ActionAPI:
             done = motion_elapsed >= n.settings['claw_settle_sec']
         elif g.operation == 'camera':
             now = n.get_clock().now().nanoseconds * 1e-9
-            done = (n.pitch_time is not None and 0 <= now - n.pitch_time <= n.settings['pitch_timeout']
+            done = (n.pitch_fresh(now)
                     and abs(n.pitch - math.radians(g.angle_deg)) <= n.settings['grasp_pitch_tol'])
         elif g.operation == 'align':
             now = n.get_clock().now().nanoseconds * 1e-9

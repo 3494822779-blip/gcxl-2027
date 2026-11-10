@@ -99,7 +99,9 @@ def validate(values):
     if 'grasp_pitch' in values and not -math.pi / 2 < values['grasp_pitch'] < math.pi / 2:
         raise ValueError('grasp_pitch must be within (-pi/2, pi/2)')
     for name in ['track_width', 'max_wheel_speed', 'pitch_home_tol', 'grasp_pitch_tol',
-                 'claw_settle_sec', 'mm_per_px', 'link_length', 'discard_speed_mps', 'discard_turn_speed_mps']:
+                 'claw_settle_sec', 'mm_per_px', 'link_length', 'discard_speed_mps', 'discard_turn_speed_mps',
+                 'wheel_speed_scale', 'serial_health_timeout', 'feedback_reconnect_sec', 'approach_slow_pitch_deg',
+                 'max_tracking_motion_sec']:
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
     for name in ['discard_distance_m', 'forward_speed', 'forward_max_error_x', 'grasp_error_x', 'claw_margin_mm', 'min_turn_speed']:
@@ -146,3 +148,12 @@ def validate(values):
 
     if 'claw_open_pitch_deg' in values and not values['cam_min_deg'] <= values['claw_open_pitch_deg'] <= values['cam_max_deg']:
         raise ValueError('claw_open_pitch_deg must be within camera limits')
+    for name in ('max_sweep_attempts', 'max_sweeps'):
+        if name in values and (isinstance(values[name], bool) or not isinstance(values[name], int) or values[name] < 1):
+            raise ValueError(f'{name} must be a positive integer')
+    if values.get('pitch_feedback_margin_deg', 0.) < 0:
+        raise ValueError('pitch_feedback_margin_deg must be nonnegative')
+    if 'approach_min_speed' in values and not 0 <= values['approach_min_speed'] <= values['forward_speed']:
+        raise ValueError('approach_min_speed must be within [0, forward_speed]')
+    if 'too_close_y' in values and not 0 < values['too_close_y'] <= 1:
+        raise ValueError('too_close_y must be within (0, 1]')

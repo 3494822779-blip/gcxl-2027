@@ -54,6 +54,13 @@ def grip(n, angle=40.):
     n.angles(msg)
 
 
+def pitch(n, deg):
+    from sensor_msgs.msg import JointState
+    msg = JointState(name=['camera_pitch'], position=[math.radians(deg)])
+    msg.header.stamp = n.get_clock().now().to_msg()
+    n.joints(msg)
+
+
 def test_selector_locks_formal_target_never_obstacle_or_new_id(rig):
     selector, filt, alignment, n, clock = rig
     target = Box(track_id=9, class_id=2, observed=True, x=280., y=250., width=80., height=80.)
@@ -79,7 +86,8 @@ def test_selector_locks_formal_target_never_obstacle_or_new_id(rig):
     raw, cmd = frame_now()
     assert raw.track_id == 9 and not raw.observed
     assert cmd.forward_speed == cmd.yaw_rate == 0. and not cmd.grasp_request
-    # The tracker re-IDs a block touching the image border: same class + overlap follows the new ID.
+    # An overlapping same-class replacement (tracker re-created the block, e.g. at the
+    # image border) takes over the task target so tracking continues.
     replacement = copy.deepcopy(target)
     replacement.track_id = 10
     frame.boxes = [replacement, obstacle]
@@ -96,8 +104,11 @@ def test_single_sweep_decay_pause_restore_then_grasp_same_target(rig):
     _, _, _, n, clock = rig
     msg = send(n, sweep_side=-1, obstacle_id=3, obstacle_overlap=.75,
                obstacle_near=True, forward_speed=.1)
+    assert compute(n) == (0., 0., -30., 0., 0.)
+    clock.t += .6  # let the selected claw reach its sweep position before driving
+    send(n, sweep_side=-1, obstacle_id=3, obstacle_overlap=.75, obstacle_near=True, forward_speed=.1)
     initial = compute(n)
-    assert initial[2:4] == (-30., 0.) and initial[0] > initial[1]
+    assert initial[0] > initial[1]
     assert not n.memory.data['grasps'] and len(n.memory.data['sweeps']) == 1
     clock.t += .1
     send(n, sweep_side=-1, obstacle_id=3, obstacle_overlap=.75, forward_speed=.1)
@@ -115,8 +126,7 @@ def test_single_sweep_decay_pause_restore_then_grasp_same_target(rig):
     for _ in range(12):
         clock.t += .1
         grip(n)
-        send(n, sweep_side=1, obstacle_id=4, obstacle_overlap=1.,
-             grasp_request=True, open_allowed=True)
+        send(n, grasp_request=True, open_allowed=True)
         compute(n)
         assert n.state == 'track'
     assert n.sweep.done and len(n.memory.data['sweeps']) == 1
@@ -124,7 +134,7 @@ def test_single_sweep_decay_pause_restore_then_grasp_same_target(rig):
     assert (n.left_claw, n.right_claw) == (40., 40.)
     clock.t += .6
     grip(n)
-    send(n, sweep_side=1, obstacle_id=4, grasp_request=True, open_allowed=True)
+    send(n, grasp_request=True, open_allowed=True)
     assert n.state == 'grasp' and n.action.track_id == 9 and not n.action.clearance
     assert n.memory.data['grasps'][0]['track_id'] == 9
 
@@ -273,15 +283,15 @@ def test_open_once_at_measured_twenty_degrees_then_hold_across_pitch_and_width_c
     send(n, open_allowed=True)
     n.cam_target = 30.  # command alone must not open the claws without actual feedback
     assert compute(n)[2:4] == (0., 0.)
-    n.joints(JointState(name=['camera_pitch'], position=[math.radians(19.9)]))
+    pitch(n, 19.9)
     assert compute(n)[2:4] == (0., 0.)
-    n.joints(JointState(name=['camera_pitch'], position=[math.radians(20.)]))
+    pitch(n, 20.)
     send(n, open_allowed=False)  # image band is not the trigger in servo mode
     assert compute(n)[2:4] == (42., 42.)
     opened = n.opened_at
-    for pitch in (19., 21., 30., 40.):
+    for deg in (19., 21., 30., 40.):
         clock.t += .1
-        n.joints(JointState(name=['camera_pitch'], position=[math.radians(pitch)]))
+        pitch(n, deg)
         grip(n, 65.)
         send(n)
         assert compute(n)[2:4] == (42., 42.)
@@ -291,6 +301,7 @@ def test_open_once_at_measured_twenty_degrees_then_hold_across_pitch_and_width_c
     assert compute(n)[:2] == (0., 0.)
     assert n.opened_at == opened and n.opening_angles == (42., 42.)
     clock.t += .2
+    pitch(n, 40.)
     n.grip = None
     send(n, grasp_request=True, open_allowed=True)
     assert n.state == 'grasp'
@@ -305,12 +316,12 @@ def test_configurable_open_pitch_feedback_expiry_and_next_task_reset(rig):
     assert not n.set_parameters_atomically([Parameter('claw_open_pitch_deg', value=100.)]).successful
     grip(n)
     send(n)
-    n.joints(JointState(name=['camera_pitch'], position=[math.radians(24.)]))
+    pitch(n, 24.)
     assert compute(n)[2:4] == (0., 0.)
-    n.joints(JointState(name=['camera_pitch'], position=[math.radians(25.)]))
+    pitch(n, 25.)
     n.pitch_time -= 1.
     assert compute(n)[2:4] == (0., 0.)
-    n.joints(JointState(name=['camera_pitch'], position=[math.radians(25.)]))
+    pitch(n, 25.)
     assert compute(n)[2:4] == (40., 40.)
     n.reset_sweep()  # ActionAPI uses this reset at every new goal.
     grip(n, 60.)
@@ -324,7 +335,7 @@ def test_sweep_restores_saved_opening_without_remeasuring_width(rig):
     compute(n)
     send(n, sweep_side=-1, obstacle_id=3, obstacle_overlap=.7)
     assert n.left_claw == -30.
-    for _ in range(13):
+    for _ in range(18):
         clock.t += .1
         grip(n, 70.)
         send(n)
@@ -356,6 +367,8 @@ def test_recorded_44_degree_feedback_triggers_and_closes_grasp(rig):
     compute(n)
     assert n.state == 'track'  # opening must still settle
     clock.t += .6
+    feedback.header.stamp = n.get_clock().now().to_msg()
+    n.joints(feedback)
     cmd.header.stamp = n.get_clock().now().to_msg()
     n.command(cmd)
     assert n.state == 'grasp'
@@ -368,7 +381,7 @@ def test_overshoot_does_not_bypass_missing_pitch_feedback(rig):
     n.set_parameters([Parameter('camera_servo', value=True)])
     n.claw = 48.3
     n.begin_grasp()
-    n.joints(JointState(name=['camera_pitch'], position=[math.radians(44.3)]))
+    pitch(n, 44.3)
     n.pitch_time -= 1.
     assert compute(n)[2:4] == (48.3, 48.3)
 
@@ -380,6 +393,7 @@ def test_lost_target_search_reverses_and_stops_on_reacquisition(rig):
     n.cam_target = 89.
     n.cmd = None
     n.cam_time = 100.
+    n.pitch, n.pitch_time, n.pitch_received = math.radians(89.), 100., 100.
     wheels = n.compute(100.1)
     assert wheels[:2] == (0., 0.)
     assert n.cam_target == 90. and n.search_direction == -1
@@ -387,9 +401,11 @@ def test_lost_target_search_reverses_and_stops_on_reacquisition(rig):
     assert n.cam_target < 90.
     assert n.grasp_blocker(100.2) == 'searching_up'
     send(n)
+    pitch(n, 89.)
     compute(n)
     assert n.search_direction == 0
     n.cmd = None
+    n.pitch_time = n.cam_time
     n.compute(n.cam_time + .1)
     assert n.search_direction != 0
     n.action_api.hold()
@@ -409,3 +425,88 @@ def test_no_search_before_lock_or_with_fixed_camera(rig):
     n.set_parameters([Parameter('camera_servo', value=False)])
     n.compute(100.2)
     assert n.search_direction == 0
+
+
+def test_search_finishes_after_one_pass(rig):
+    n = rig[3]
+    n.set_parameters([Parameter('camera_servo', value=True)])
+    n.formal_track_id = 9
+    n.cam_target = 89.
+    n.cam_time = 100.
+    for i in range(100):
+        n.pitch, n.pitch_time, n.pitch_received = 0., 100. + (i + 1) * .1, 100.
+        assert n.compute(100. + (i + 1) * .1)[:2] == (0., 0.)
+    assert n.search_completed and n.search_direction == 0
+    assert n.cam_target == n.settings['cam_min_deg']
+    assert n.grasp_blocker(110.) == 'search_exhausted'
+    send(n)
+    pitch(n, 0.)
+    compute(n)
+    n.cmd = None
+    angle = n.cam_target
+    n.compute(n.cam_time + .1)
+    assert n.cam_target == angle
+    n.reset_sweep()
+    assert not n.search_completed
+
+
+def test_multiple_obstacles_recover_claw_before_next_sweep(rig):
+    n, clock = rig[3], rig[4]
+    n.set_parameters([Parameter('sweep_duration_sec', value=.2), Parameter('claw_settle_sec', value=.1)])
+    send(n, sweep_side=-1, obstacle_id=3, obstacle_overlap=.8)
+    assert compute(n)[:2] == (0., 0.)
+    for _ in range(4):
+        clock.t += .1
+        send(n, sweep_side=1, obstacle_id=4, forward_speed=.2)
+        compute(n)
+    assert n.sweep.done and n.last_swept_obstacle_id == 3
+    assert len(n.memory.data['sweeps']) == 1
+    assert (n.left_claw, n.right_claw) == (0., 0.)
+    clock.t += .2
+    send(n, sweep_side=1, obstacle_id=4, obstacle_overlap=.8)
+    assert n.sweep.side == 1 and n.sweep_obstacle_id == 4
+    assert n.memory.data['sweeps'][-1]['obstacle_id'] == 4
+    assert compute(n)[:2] == (0., 0.)  # right claw now settling
+
+
+def test_persistent_obstacle_exhausts_budget_without_closing(rig):
+    n, clock = rig[3], rig[4]
+    n.set_parameters([Parameter('sweep_duration_sec', value=.1), Parameter('claw_settle_sec', value=.05)])
+    for _ in range(20):
+        send(n, sweep_side=-1, obstacle_id=3, obstacle_overlap=.8, grasp_request=True)
+        compute(n)
+        if n.safety_reason:
+            break
+        clock.t += .1
+    assert n.safety_reason == 'sweep_no_progress'
+    assert n.sweep_count == 2 and not n.memory.data['grasps']
+
+
+def test_track_rebind_preserves_saved_opening(rig):
+    n, clock = rig[3], rig[4]
+    grip(n, 45.)
+    send(n, open_allowed=True)
+    compute(n)
+    first_opened = n.opened_at
+    clock.t += .1
+    msg = AlignmentCommand(first_grasp_id=1, class_id=2, track_id=10,
+        valid=True, valid_for_sec=.25)
+    msg.header.stamp = n.get_clock().now().to_msg()
+    n.command(msg)
+    compute(n)
+    assert n.opening_track_id == 10 and n.opening_angles == (45., 45.)
+    assert n.opened_at == first_opened
+
+
+def test_grasp_requires_an_observation_after_sweep_completion(rig):
+    n, clock = rig[3], rig[4]
+    grip(n, 45.)
+    send(n, open_allowed=True)
+    compute(n)
+    send(n, sweep_side=-1, obstacle_id=3, obstacle_overlap=.8)
+    n.sweep.advance(n.sweep.duration)
+    n.sweep_recovered_stamp = n.get_clock().now().nanoseconds * 1e-9 + .1
+    n.opened_at = clock.t - 1.
+    send(n, grasp_request=True)
+    assert n.state == 'track'
+    assert n.grasp_blocker(n.get_clock().now().nanoseconds * 1e-9) == 'waiting_for_post_sweep_observation'

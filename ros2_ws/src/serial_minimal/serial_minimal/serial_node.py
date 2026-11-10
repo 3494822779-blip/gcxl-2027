@@ -9,8 +9,11 @@ import tty
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
+from rclpy.clock import Clock, ClockType
+from rclpy.qos import QoSProfile, DurabilityPolicy
 from rclpy.signals import SignalHandlerOptions
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
+from .tx_buffer import TxBuffer
 
 
 BAUD = {9600: termios.B9600, 19200: termios.B19200, 38400: termios.B38400,
@@ -24,6 +27,7 @@ class SerialNode(Node):
         self.declare_parameter('baud', 115200)
         self.declare_parameter('poll_period', 0.01)
         self.declare_parameter('shutdown_grace', 0.5)
+        self.declare_parameter('write_timeout', 0.1)
         self.port = self.get_parameter('port').value
         baud = int(self.get_parameter('baud').value)
         if baud not in BAUD:
@@ -34,24 +38,46 @@ class SerialNode(Node):
         attrs[4] = attrs[5] = BAUD[baud]
         termios.tcsetattr(self.fd, termios.TCSANOW, attrs)
         self.rx_pub = self.create_publisher(String, 'serial_rx', 10)
-        self.tx_sub = self.create_subscription(String, 'serial_tx', self.write, 10)
-        self.timer = self.create_timer(float(self.get_parameter('poll_period').value), self.read)
+        self.health_pub = self.create_publisher(Bool, 'serial/healthy',
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+        self.health_pub.publish(Bool(data=False))
+        self.tx = TxBuffer(lambda data: os.write(self.fd, data), float(self.get_parameter('write_timeout').value))
+        self.read_ok = True
+        self.control_clock = Clock(clock_type=ClockType.STEADY_TIME)
+        self.tx_sub = self.create_subscription(String, 'serial_tx', self.write, 1)
+        self.timer = self.create_timer(float(self.get_parameter('poll_period').value), self.poll, clock=self.control_clock)
         self.get_logger().info(f'Opened {self.port} @ {baud} baud')
 
     def write(self, msg):
+        self.tx.enqueue(msg.data.encode() + b'\n')
+        self.flush()
+
+    def flush(self):
         try:
-            os.write(self.fd, msg.data.encode() + b'\n')
+            self.tx.flush()
         except OSError as exc:
             self.get_logger().error(f'Write failed: {exc}')
+            self.health_pub.publish(Bool(data=False))
+
+    def poll(self):
+        self.read()
+        self.flush()
+        complete = self.tx.last_complete
+        healthy = self.read_ok and complete is not None and 0 <= time.monotonic() - complete <= 0.15
+        self.health_pub.publish(Bool(data=healthy))
 
     def read(self):
         try:
             data = os.read(self.fd, 4096)
         except BlockingIOError:
+            self.read_ok = True
             return
         except OSError as exc:
+            self.read_ok = False
+            self.health_pub.publish(Bool(data=False))
             self.get_logger().error(f'Read failed: {exc}')
             return
+        self.read_ok = bool(data)
         if data:
             msg = String()
             msg.data = data.decode(errors='replace')

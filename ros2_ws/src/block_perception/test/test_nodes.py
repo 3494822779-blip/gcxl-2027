@@ -157,12 +157,13 @@ def test_camera_servo_mode_needs_pitch_and_drives_forward_until_it_is_down(nodes
     pitch.header.stamp = m.header.stamp
     alignment.joints(pitch)
     alignment.tick()
-    assert alignment.pub.messages[-1].forward_speed == pytest.approx(alignment.settings['forward_speed'])
+    assert 0 < alignment.pub.messages[-1].forward_speed <= alignment.settings['forward_speed']
     assert alignment.pub.messages[-1].pitch_rate > 0  # target above band: visually track upward
     alignment.set_parameters([Parameter('deadzone_y', value=.05)])
     target_at(alignment, 470.)  # approaching makes the target drop below the band
     alignment.tick()
-    assert alignment.pub.messages[-1].forward_speed > 0
+    assert alignment.pub.messages[-1].forward_speed == 0
+    assert alignment.pub.messages[-1].reason == 'too_close_waiting_pitch'
     assert alignment.pub.messages[-1].pitch_rate < 0  # camera follows it downward
     target_at(alignment, 432.)
     pitch = JointState(name=['camera_pitch'], position=[-.26])
@@ -189,3 +190,17 @@ def test_selector_follows_block_after_tracker_id_change(nodes):
     again = send(12, [Box(track_id=22, **block)])
     assert again.observed and again.track_id == 22
     assert selector.set_parameters_atomically([Parameter('rebind_iou', value=2.)]).successful is False
+
+
+def test_controller_does_not_renew_observation_time(nodes):
+    from rclpy.time import Time
+    alignment = nodes[2]
+    target = target_at(alignment, 300.)
+    source_time = alignment.get_clock().now().nanoseconds - 100_000_000
+    target.header.stamp = Time(nanoseconds=source_time).to_msg()
+    alignment.tick()
+    first = alignment.pub.messages[-1]
+    alignment.tick()
+    second = alignment.pub.messages[-1]
+    assert first.valid and second.valid
+    assert first.header.stamp == second.header.stamp == target.header.stamp

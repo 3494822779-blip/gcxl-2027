@@ -30,7 +30,7 @@ def rig():
     assert client.wait_for_server(timeout_sec=3.)
     yield n, client, executor
     client.destroy()
-    n.action_api.server.destroy()
+    n.action_api.destroy()
     executor.shutdown()
     n.destroy_node()
     rclpy.shutdown()
@@ -50,7 +50,7 @@ def goal(rig, operation, **kwargs):
     future = rig[1].send_goal_async(RobotTask.Goal(operation=operation, **kwargs))
     until(rig, future.done)
     handle = future.result()
-    if handle.accepted:
+    if handle.accepted and operation != 'stop':
         until(rig, lambda: rig[0].action_api.handle is not None)
     return handle
 
@@ -110,7 +110,9 @@ def command(n, **kw):
     if n.action_api.first_id:
         kw.setdefault('first_grasp_id', n.action_api.first_id)
         kw.setdefault('class_id', n.action_api.goal.target_class_id if n.action_api.goal else 2)
-    msg = AlignmentCommand(valid=True, valid_for_sec=.25, track_id=7, **kw)
+    values = dict(valid=True, valid_for_sec=.25, track_id=7)
+    values.update(kw)
+    msg = AlignmentCommand(**values)
     msg.header.stamp = n.get_clock().now().to_msg()
     n.grip = GripperAngles(track_id=7, angles_ready=True, valid_for_sec=.25,
         left_angle_rad=math.radians(n.left_claw), right_angle_rad=math.radians(n.right_claw))
@@ -140,7 +142,9 @@ def test_camera_requires_feedback_and_cancel_retains_target(rig):
     n = rig[0]
     n.set_parameters([Parameter('camera_servo', value=True)])
     h = goal(rig, 'camera', angle_deg=20.)
-    n.joints(JointState(name=['camera_pitch'], position=[math.radians(20.)]))
+    feedback = JointState(name=['camera_pitch'], position=[math.radians(20.)])
+    feedback.header.stamp = n.get_clock().now().to_msg()
+    n.joints(feedback)
     assert result(rig, h).success
     assert n.cam_target == 20.
     h = goal(rig, 'camera', angle_deg=10., timeout_sec=.1)
@@ -283,6 +287,7 @@ def test_sweep_action_interruption_stops_and_records_without_grasp(rig, ending):
     msg.header.stamp = n.get_clock().now().to_msg()
     n.command(msg)
     assert n.sweep is not None and n.left_claw == -30.
+    n.tick()  # the sweep posture has actually been published before interruption
     if ending == 'cancel':
         canceled = h.cancel_goal_async()
         until(rig, canceled.done)
@@ -311,6 +316,7 @@ def test_complete_target_sweep_through_real_node_topics(rig):
         result_future = h.get_result_async()
         deadline = time.monotonic() + 4.
         next_frame = 0.
+        obstacle_removed = False
         while not result_future.done() and time.monotonic() < deadline:
             if time.monotonic() >= next_frame:
                 frame = FrameMetadata(width=640, height=480, boxes=[
@@ -318,6 +324,11 @@ def test_complete_target_sweep_through_real_node_topics(rig):
                         x=280., y=304., width=80., height=80.),
                     Box(track_id=8, class_id=1, observed=True, confidence=.9,
                         x=280., y=360., width=80., height=80.)])
+                # A successful sweep must have an observable result in the next frame.
+                obstacle_removed = obstacle_removed or n.sweep is not None and n.sweep.done
+                if obstacle_removed:
+                    frame.boxes = frame.boxes[:1]
+                    frame.boxes[0].y = 200.  # approach brings target centre into the 240 px band
                 frame.header.stamp = n.get_clock().now().to_msg()
                 pub.publish(frame)
                 next_frame = time.monotonic() + .03
@@ -337,3 +348,177 @@ def test_complete_target_sweep_through_real_node_topics(rig):
         for node in pipeline:
             rig[2].remove_node(node)
             node.destroy_node()
+
+
+def test_stop_preempts_move_and_does_not_latch(rig):
+    n = rig[0]
+    moving = goal(rig, 'move', distance_m=10., speed_mps=.2)
+    stopped = goal(rig, 'stop')
+    assert result(rig, stopped).success
+    assert not result(rig, moving, GoalStatus.STATUS_ABORTED).success
+    assert not n.safety_reason
+    assert result(rig, goal(rig, 'move', distance_m=0.)).success
+
+
+def test_stop_invalidates_a_goal_accepted_before_execute(rig):
+    from types import SimpleNamespace
+    from rclpy.action import GoalResponse
+    n = rig[0]
+    request = RobotTask.Goal(operation='claw', angle_deg=80.)
+    assert n.action_api.accept(request) == GoalResponse.ACCEPT
+    assert n.action_api.accept(RobotTask.Goal(operation='stop')) == GoalResponse.ACCEPT
+    aborted = []
+    pending = SimpleNamespace(request=request, abort=lambda: aborted.append(True))
+    future = rig[2].create_task(n.action_api.execute, pending)
+    until(rig, future.done)
+    assert not future.result().success and aborted
+    assert n.claw == 0. and not n.action_api.reserved
+
+
+def test_emergency_stop_service_requires_explicit_reset_and_new_goal(rig):
+    from std_srvs.srv import Trigger
+    n = rig[0]
+    moving = goal(rig, 'move', distance_m=10.)
+    client = n.create_client(Trigger, 'robot/emergency_stop')
+    assert client.wait_for_service(timeout_sec=1.)
+    future = client.call_async(Trigger.Request())
+    until(rig, future.done)
+    assert future.result().success
+    result(rig, moving, GoalStatus.STATUS_ABORTED)
+    assert not goal(rig, 'claw', angle_deg=80.).accepted
+    assert result(rig, goal(rig, 'stop')).success
+    reset = n.create_client(Trigger, 'robot/reset_safety')
+    assert reset.wait_for_service(timeout_sec=1.)
+    future = reset.call_async(Trigger.Request())
+    until(rig, future.done)
+    assert future.result().success and n.state == 'hold'
+    assert result(rig, goal(rig, 'move', distance_m=0.)).success
+    n.destroy_client(client)
+    n.destroy_client(reset)
+
+
+def test_serial_fault_latches_even_after_link_recovers(rig):
+    from std_msgs.msg import Bool
+    from std_srvs.srv import Trigger
+    n = rig[0]
+    n.require_serial_health = True
+    assert not goal(rig, 'move', distance_m=1.).accepted
+    n.link_health(Bool(data=True))
+    moving = goal(rig, 'move', distance_m=10.)
+    n.link_health(Bool(data=False))
+    result(rig, moving, GoalStatus.STATUS_ABORTED)
+    assert not n.reset_safety(None, Trigger.Response()).success
+    n.link_health(Bool(data=True))
+    assert not goal(rig, 'move', distance_m=1.).accepted
+    assert n.reset_safety(None, Trigger.Response()).success
+    assert n.state == 'hold'
+
+
+def test_align_never_changes_claw_opening(rig):
+    n = rig[0]
+    h = goal(rig, 'align')
+    n.claw = 35.
+    c = AlignmentCommand(valid=True, valid_for_sec=.25, track_id=7, open_allowed=True)
+    c.header.stamp = n.get_clock().now().to_msg()
+    n.angles(GripperAngles(header=c.header, track_id=7, angles_ready=True,
+        valid_for_sec=.25, left_angle_rad=math.radians(65.), right_angle_rad=math.radians(65.)))
+    n.command(c)
+    n.tick()
+    assert n.claw == 35. and n.opening_angles is None
+    canceled = h.cancel_goal_async()
+    until(rig, canceled.done)
+    result(rig, h, GoalStatus.STATUS_CANCELED)
+
+
+def test_target_loss_before_closure_and_dropout_after_closure(rig):
+    n = rig[0]
+    n.set_parameters([Parameter('camera_servo', value=True)])
+    h = goal(rig, 'target_grasp')
+    n.claw = 40.
+    command(n, grasp_request=True)
+    assert n.state == 'grasp' and n.close_time is None
+    command(n, valid=False)
+    pitch = JointState(name=['camera_pitch'], position=[math.radians(45.)])
+    pitch.header.stamp = n.get_clock().now().to_msg()
+    n.joints(pitch)
+    n.tick()
+    assert n.claw == 40. and n.close_time is None
+    command(n, grasp_request=True)
+    n.tick()
+    assert n.claw == 0. and n.close_time is not None
+    n.pitch_received -= 1.
+    n.close_time -= 1.
+    assert result(rig, h).success
+
+
+@pytest.mark.parametrize('field,value', [('forward_speed', math.nan), ('yaw_rate', math.inf),
+    ('pitch_rate', math.nan), ('obstacle_overlap', 2.), ('valid_for_sec', 0.),
+    ('forward_speed', .6), ('yaw_rate', 3.), ('pitch_rate', 1.)])
+def test_invalid_command_stops_and_latches(rig, field, value):
+    n = rig[0]
+    h = goal(rig, 'target_grasp')
+    command(n, **{field: value})
+    assert n.safety_reason and n.state == 'hold'
+    result(rig, h, GoalStatus.STATUS_ABORTED)
+
+
+def test_local_command_timeout_works_without_ros_clock_progress(rig):
+    n = rig[0]
+    h = goal(rig, 'target_grasp')
+    command(n, forward_speed=.2, valid_for_sec=900.)
+    assert n.compute(n.get_clock().now().nanoseconds * 1e-9)[0] > 0.
+    n.cmd_received -= 1.
+    assert n.compute(n.get_clock().now().nanoseconds * 1e-9)[:2] == (0., 0.)
+    canceled = h.cancel_goal_async()
+    until(rig, canceled.done)
+    result(rig, h, GoalStatus.STATUS_CANCELED)
+
+
+def test_pitch_rejects_replay_impossible_angle_and_old_joint_timestamp(rig):
+    from block_perception.actuator import checksum
+    n = rig[0]
+    def feedback(seq, angle):
+        body = f'FB,{seq},{angle}'
+        n.serial_rx(String(data=f'${body}*{checksum(body)}\n'))
+    feedback(65534, 20.)
+    assert n.pitch is None
+    feedback(65535, 20.)
+    first = n.pitch_received
+    feedback(65535, 30.)
+    feedback(0, 999.)
+    assert n.pitch_received == first and n.pitch == math.radians(20.)
+    feedback(0, 25.)
+    assert n.pitch == math.radians(25.)  # sequence wrap is valid
+    msg = JointState(name=['camera_pitch'], position=[math.radians(40.)])
+    msg.header.stamp = n.get_clock().now().to_msg()
+    msg.header.stamp.sec -= 1
+    n.joints(msg)
+    assert n.pitch == math.radians(25.)
+    received = n.pitch_received
+    n.last_fb_time -= 2.
+    feedback(0, 40.)
+    assert n.pitch == math.radians(25.) and n.pitch_received == received
+    feedback(1, 30.)
+    assert n.pitch == math.radians(30.)
+
+
+def test_stop_does_not_apply_an_unpublished_servo_goal(rig):
+    from std_srvs.srv import Trigger
+    n = rig[0]
+    n.tick()
+    previous = n.last_safe_servos
+    n.claw = 80.
+    n.emergency_stop(None, Trigger.Response())
+    assert (n.left_claw, n.right_claw, n.cam_target) == previous
+
+
+def test_tracking_motion_budget_counts_movement_and_stops(rig):
+    n = rig[0]
+    n.set_parameters([Parameter('max_tracking_motion_sec', value=.1)])
+    h = goal(rig, 'target_grasp')
+    command(n, forward_speed=.2)
+    n.tick()
+    n.motion_time -= .15
+    n.tick()
+    assert n.safety_reason == 'tracking_motion_budget_exceeded'
+    result(rig, h, GoalStatus.STATUS_ABORTED)

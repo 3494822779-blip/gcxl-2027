@@ -1,6 +1,6 @@
 # 普通抓取任务
 
-> 目标抓取接口已更新：启动默认等待人工任务；`target_grasp`（以及 `approach_grasp`、`first_grasp`）必须显式提供 `has_target_class: true, target_class_id: <类别>`。自动运行使用 `autonomous:=true target_class:=<类别>`。清障采用单爪扫走一次，丢弃已停用。完整规则和当前命令以 [动作说明](../docs/project_actions.md) 为准。接口变更后须重建全部依赖包并重启节点。
+> 目标抓取接口已更新：启动默认等待人工任务；`target_grasp`（以及 `approach_grasp`、`first_grasp`）必须显式提供 `has_target_class: true, target_class_id: <类别>`。自动运行使用 `autonomous:=true target_class:=<类别>`。清障采用有次数预算的单爪逐个扫走，丢弃已停用。完整规则和当前命令以 [动作说明](../docs/project_actions.md) 为准。接口变更后须重建全部依赖包并重启节点。
 
 
 完整逻辑、代码映射和 Action 用法见 **[项目功能与动作接口](../docs/project_actions.md)**。默认启动等待外部 Goal；`autonomous:=true target_class:=<类别>` 自动执行一次指定类别抓取。完成、取消或超时后停车保持，继续执行需提交新 Goal。
@@ -164,7 +164,7 @@ ros2 action send_goal /robot/execute block_interfaces/action/RobotTask "{operati
 ```
 
 必须显式指定类别，没有默认类别。`approach_grasp` 和 `first_grasp` 是相同流程的兼容名称，同样要求类别。
-选中指定类别中下边缘最低的真实目标后保持编号；只处理前方横向交集最大的障碍，单爪内收 −30°，继续接近正式目标并叠加指数衰减的反向转向偏置。
-每个目标只扫一次，扫完恢复张爪并抓取原目标；丢失原编号时停车等待，不重新选目标。
+选中指定类别中下边缘最低的真实目标后锁定；优先处理前方下边缘最低、与目标横向相交的障碍，单爪内收 −30°，等待后继续接近正式目标并叠加指数衰减的反向转向偏置。
+扫完恢复爪位并依据新观测复查，默认同一障碍最多两次、每任务总共八次；仍有障碍则停车，清障后抓取原目标。目标丢失时停车，可按同类别框几何重叠接管跟踪器新编号。
 抓取结束保持夹持、停车并发出相机回正指令。`discard` 和 `discard_after: true` 已停用并拒绝执行。
 详细参数、取消和记忆接口见 [动作说明](../docs/project_actions.md)。

@@ -1,5 +1,6 @@
 # error_x: target centre vs image centre. error_y: target BOTTOM edge vs bottom_target line.
 # Errors are normalized by half image size. Rates are rad/s; receiver must enforce TTL.
+# For valid commands header.stamp is the source observation time, not the controller tick.
 std_msgs/Header header
 uint64 track_id
 bool valid

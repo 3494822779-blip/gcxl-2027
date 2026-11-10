@@ -62,6 +62,9 @@ alignment:                         # 对准指令，20 Hz 发布 /alignment/comm
     bottom_target: 0.5             # 目标框中心位置（占画面高度比例），目标带由 deadzone_y 定义
     forward_speed: 0.5             # m/s（×wheel_speed_scale=1000 → 下位机收到 500）；舵机关：下边缘在目标带上方（物块还远）时前进，带下方按 reverse_speed 倒退；
                                    # 舵机开：相机尚未低到 grasp_pitch 时前进
+    approach_min_speed: 0.1        # m/s；接近抓取俯仰角时逐步降至此速度，须实车标定
+    approach_slow_pitch_deg: 15.0  # 距离抓取俯仰门槛小于此角度时减速
+    too_close_y: 0.9               # 舵机模式：目标中心到画面高度此比例时停止底盘，等待俯仰对准
     forward_max_error_x: 0.3       # 水平偏差超过此值（归一化）时不前进，先转向
     grasp_error_x: 0.15            # 物块到达下边缘目标线时的水平死区（归一化）；远处用 deadzone_x，越近越宽，线性过渡
     yaw_near_weight: 0.2           # [0, 1]；转向增益权重：远处=1（全增益，前期转到位），越近越小，最低到此值（到达目标线时）
@@ -73,7 +76,7 @@ alignment:                         # 对准指令，20 Hz 发布 /alignment/comm
     pitch_gain: 1.5                # 正角度=低头；仅 camera_servo=true 时有效
     max_yaw_rate: 2.0              # rad/s 限幅；原地转向时左右轮各 ±200（track_width=0.2、scale=1000）
     max_pitch_rate: 0.6            # rad/s（约 34.4°/s）；20 Hz 下每周期最大调整约 1.72°
-    grasp_pitch: 0.7381317007977318 # rad，45°；须与 actuator.grasp_pitch_deg 同角度
+    grasp_pitch: 0.7853981633974483 # rad，45°；与 actuator.grasp_pitch_deg 一致
     grasp_pitch_tol: 0.0296705972839036 # rad，抓取允许低于阈值 1.7°，超过阈值也可抓
     reverse_speed: 0.1             # m/s；相机关闭且过近时倒退
     pitch_timeout: 0.25            # 秒；pitch 反馈过期判定（仅 camera_servo=true）
@@ -104,7 +107,7 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     max_wheel_speed: 0.5           # m/s 限幅，×scale 即下位机收到的轮速上限
     min_turn_speed: 0.17            # m/s；只要有转向指令，每侧轮子的转向分量至少这么大（×scale 即下位机收到的值），
                                    # 避免小偏差时左右轮差太小、电机不动；0 = 关闭
-    search_pitch_speed_deg: 20.0   # 丢失原目标时先低头再抬头循环搜索，度/秒
+    search_pitch_speed_deg: 20.0   # 丢失原目标时先低头再抬头搜索一轮，度/秒
     cam_min_deg: 0.0               # 相机舵机角度指令下限（度，0=回正）
     cam_max_deg: 90.0              # 上限（度，正=低头）；alignment 的俯仰速度在此范围内积分成角度
     claw_open_pitch_deg: 22.0      # 度；实际相机低头达到此角度，按当时宽度只张爪一次
@@ -138,6 +141,14 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     claw_deadband_deg: 2.0         # 度；兼容保留；单次张爪不随后续框宽调整
     pitch_timeout: 0.25            # 秒；pitch 反馈过期判定
     pitch_joint: camera_pitch
+    input_timeout: 0.25            # 消费者自身的指令 TTL 上限，另有单调时钟接收超时
+    serial_health_timeout: 0.25    # serial:=true 时，串口健康消息超时即锁存停车
+    pitch_feedback_margin_deg: 2.0 # 反馈允许超出配置角度范围的测量余量；不放宽指令限位
+    feedback_reconnect_sec: 1.0    # FB 序号无进展达到此时长后允许重新建立序号基准
+    max_sweep_attempts: 2          # 同一障碍最多扫两次，仍有遮挡则锁存停车
+    max_sweeps: 8                 # 每任务扫走次数总预算，包含障碍编号变化
+    max_pitch_rate: 0.6           # 消费者允许的视觉俯仰速度上限，须与 alignment 配置一致
+    max_tracking_motion_sec: 10.0 # 每任务对准/接近/扫走累计底盘运动指令时间预算，超出锁存停车
 
 # ---------- 串口桥 ----------
 

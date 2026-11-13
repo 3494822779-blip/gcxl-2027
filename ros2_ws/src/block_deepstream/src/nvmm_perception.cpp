@@ -1,3 +1,5 @@
+#include <filesystem>
+#include <unistd.h>
 #include <rclcpp/rclcpp.hpp>
 #include <rcl_interfaces/msg/set_parameters_result.hpp>
 #include <block_interfaces/msg/frame_metadata.hpp>
@@ -17,6 +19,11 @@
 #include "target_cache.hpp"
 
 class NvmmPerception : public rclcpp::Node {
+  struct TemporaryConfig {
+    std::string path;
+    ~TemporaryConfig() { if(!path.empty()) ::unlink(path.c_str()); }
+  } runtime_config_;
+
   using Metadata = block_interfaces::msg::FrameMetadata;
   GstElement *pipeline_ = nullptr, *source_ = nullptr;
   GstBus *bus_ = nullptr;
@@ -287,6 +294,30 @@ class NvmmPerception : public rclcpp::Node {
         if (error) g_error_free(error);
         g_key_file_unref(key); throw std::runtime_error(message);
       }
+      const auto model_dir=declare_parameter("model_directory",std::string(""),fixed);
+      const auto parser=declare_parameter("parser_library",std::string(""),fixed);
+      const auto config_dir=std::filesystem::absolute(infer).parent_path();
+      for(const char* name:{"onnx-file","model-engine-file","labelfile-path","custom-lib-path"}) {
+        gchar* raw=g_key_file_get_string(key,"property",name,nullptr);
+        if(!raw) continue;
+        std::string path(raw); g_free(raw);
+        if(path.rfind("@MODEL_DIR@/",0)==0) {
+          if(model_dir.empty()) { g_key_file_unref(key); throw std::runtime_error("model_directory is required"); }
+          path=(std::filesystem::path(model_dir)/path.substr(12)).string();
+        } else if(path=="@PARSER_LIBRARY@") {
+          if(parser.empty()) { g_key_file_unref(key); throw std::runtime_error("parser_library is required"); }
+          path=parser;
+        } else if(std::filesystem::path(path).is_relative()) path=(config_dir/path).string();
+        g_key_file_set_string(key,"property",name,path.c_str());
+      }
+      char filename[]="/tmp/gcxl-inference-XXXXXX";
+      const int descriptor=mkstemp(filename);
+      if(descriptor<0) { g_key_file_unref(key); throw std::runtime_error("cannot create runtime inference config"); }
+      close(descriptor); runtime_config_.path=filename;
+      gsize length=0; gchar* rendered=g_key_file_to_data(key,&length,nullptr);
+      const bool written=g_file_set_contents(filename,rendered,length,nullptr); g_free(rendered);
+      if(!written) { g_key_file_unref(key); throw std::runtime_error("cannot write runtime inference config"); }
+      infer=filename;
       int classes = g_key_file_get_integer(key, "property", "num-detected-classes", nullptr);
       double floor = g_key_file_get_double(key, "class-attrs-all", "pre-cluster-threshold", nullptr);
       g_key_file_unref(key);

@@ -47,7 +47,7 @@ ROS_DOMAIN_ID=72 ROS_LOG_DIR=/tmp/nvmm-live PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
 
 ```bash
 ros2 run block_deepstream perception --ros-args \
-  --params-file ros2_ws/src/block_perception/config/perception.yaml -p headless:=true
+  --params-file ros2_ws/src/block_bringup/config/perception.yaml -p headless:=true
 ```
 
 原始长测汇总保存在本机 `/tmp/gcxl-nvmm-soak.json`；该临时文件可能随清理消失，关键结果已记录在本文。

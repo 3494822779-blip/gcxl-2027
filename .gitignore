@@ -18,3 +18,18 @@ __pycache__/
 /install_gcxl/
 /ros2_ws/install/
 /ros2_ws/build/
+
+# Root-level build output, inference previews and captures
+/build_gcxl/
+/runs/
+/photos/
+
+# Local generated artifacts
+/artifacts/
+
+# Renamed top-level asset directories
+
+# Local model deployments (use LFS explicitly if these must be versioned)
+*.engine
+*.onnx
+*.pt

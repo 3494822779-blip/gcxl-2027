@@ -28,7 +28,7 @@
 
 **相关文件**：
 - `ros2_ws/src/block_perception/block_perception/nodes.py` (Camera类)
-- `ros2_ws/src/block_perception/config/perception.yaml` (camera配置)
+- `ros2_ws/src/block_bringup/config/perception.yaml` (camera配置)
 
 ### 2. DeepStream推理优化
 
@@ -47,7 +47,7 @@
 **相关文件**：
 - `models/yolov8n_gcxl_aug/config_infer_primary.txt`
 - `ros2_ws/src/block_deepstream/src/bridge.cpp`
-- `scripts/rebuild_engine_720p.sh` (引擎生成脚本)
+- `scripts/model/rebuild_engine_720p.sh` (引擎生成脚本)
 
 ### 3. 跟踪器优化
 
@@ -81,7 +81,7 @@
 - 功耗增加约5-10W（可接受）
 
 **相关文件**：
-- `scripts/enable_max_performance.sh`
+- `scripts/tune/enable_max_performance.sh`
 
 ## 性能指标对比
 
@@ -118,12 +118,12 @@
 
 1. 启用MAXN性能模式：
    ```bash
-   sudo ~/project/gcxl-2027/scripts/enable_max_performance.sh
+   sudo ~/project/gcxl-2027/scripts/tune/enable_max_performance.sh
    ```
 
 2. 生成720p TensorRT引擎（约5-10分钟）：
    ```bash
-   ~/project/gcxl-2027/scripts/rebuild_engine_720p.sh
+   ~/project/gcxl-2027/scripts/model/rebuild_engine_720p.sh
    ```
 
 ### 日常使用
@@ -131,10 +131,10 @@
 使用优化启动脚本（推荐）：
 ```bash
 # 普通抓取
-~/project/gcxl-2027/scripts/run_optimized.sh
+~/project/gcxl-2027/scripts/run/run_optimized.sh
 
 # 首次抓取
-~/project/gcxl-2027/scripts/run_optimized.sh --first-grasp
+~/project/gcxl-2027/scripts/run/run_optimized.sh --first-grasp
 ```
 
 或手动启动：
@@ -153,7 +153,7 @@ ros2 launch block_perception perception.launch.py camera:=true serial:=true
 运行测试脚本：
 
 ```bash
-~/project/gcxl-2027/scripts/test_camera_60fps.sh
+~/project/gcxl-2027/scripts/hardware/test_camera_60fps.sh
 ```
 
 脚本会自动检查：
@@ -180,12 +180,12 @@ ros2 launch block_perception perception.launch.py camera:=true serial:=true
 
 实时监控系统性能：
 ```bash
-~/project/gcxl-2027/scripts/monitor_performance.sh
+~/project/gcxl-2027/scripts/tune/monitor_performance.sh
 ```
 
 性能对比测试：
 ```bash
-~/project/gcxl-2027/scripts/benchmark_performance.sh
+~/project/gcxl-2027/scripts/tune/benchmark_performance.sh
 ```
 
 ## 注意事项
@@ -242,7 +242,7 @@ ros2 launch block_perception perception.launch.py camera:=true serial:=true
 
 1. 确认TensorRT引擎文件存在
 2. 检查引擎是否为FP16版本
-3. 重新生成引擎：`~/project/gcxl-2027/scripts/rebuild_engine_720p.sh`
+3. 重新生成引擎：`~/project/gcxl-2027/scripts/model/rebuild_engine_720p.sh`
 4. 查看DeepStream日志：`ros2 topic echo /detector/status`
 
 ## 未来优化方向

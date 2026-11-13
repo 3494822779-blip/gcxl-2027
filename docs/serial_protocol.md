@@ -7,7 +7,7 @@
 - [actuator.py](../ros2_ws/src/block_perception/block_perception/actuator.py)：控制帧编码、反馈校验、角度与执行状态。
 - [serial_node.py](../ros2_ws/src/serial_minimal/serial_minimal/serial_node.py)：串口收发与换行。
 - [nodes.py](../ros2_ws/src/block_perception/block_perception/nodes.py)：视觉对准、前进和抓取条件。
-- [perception.yaml](../ros2_ws/src/block_perception/config/perception.yaml)：本项目参数。
+- [perception.yaml](../ros2_ws/src/block_bringup/config/perception.yaml)：本项目参数。
 
 本文的“当前配置”指上述 YAML 中的数值。启动时可通过其他 YAML 或运行时参数覆盖；Python 类的内置默认值与项目 YAML 并不完全相同，以实际运行参数为准。
 
@@ -277,7 +277,7 @@ ros2 topic echo /alignment/command
 先停止 ROS 串口节点及其他占用串口的软件，再在项目根目录执行：
 
 ```bash
-python3 scripts/serial_check.py --port /dev/ttyACM0
+python3 scripts/hardware/serial_check.py --port /dev/ttyACM0
 ```
 
 脚本会发送 CMD 并检查反馈，默认轮速零、夹爪和相机目标为零，舵机可能回到初始位置。只检查能否打开及写入串口可加 `--tx-only`，但通过不证明下位机收到或执行。

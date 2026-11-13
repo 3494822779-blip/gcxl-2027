@@ -1,0 +1,32 @@
+<launch>
+  <arg name="params" default="$(find-pkg-share block_bringup)/config/perception.yaml"/>
+  <arg name="model_dir" default="$(env HOME)/.local/share/gcxl/models/yolov8n_gcxl_aug"/>
+  <arg name="serial" default="false"/>
+  <arg name="display" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="autonomous" default="false"/>
+  <arg name="target_class" default="-1"/>
+  <arg name="task" default="normal"/>
+  <node pkg="block_deepstream" exec="perception" name="perception" output="screen">
+    <param from="$(var params)"/>
+    <param name="inference_config" value="$(find-pkg-share block_bringup)/config/infer_blocks.txt"/>
+    <param name="tracker_config" value="$(find-pkg-share block_bringup)/config/tracker_blocks.yml"/>
+    <param name="parser_library" value="$(find-pkg-share block_bringup)/lib/libnvdsinfer_custom_impl_Yolo.so"/>
+    <param name="model_directory" value="$(var model_dir)"/>
+    <param name="display" value="$(var display)"/>
+    <param name="headless" value="$(var headless)"/>
+  </node>
+  <node pkg="block_perception" exec="selector" name="selector" output="screen"><param from="$(var params)"/></node>
+  <node pkg="block_perception" exec="filter" name="filter" output="screen"><param from="$(var params)"/></node>
+  <node pkg="block_perception" exec="alignment" name="alignment" output="screen"><param from="$(var params)"/></node>
+  <node pkg="block_perception" exec="gripper" name="gripper" output="screen"><param from="$(var params)"/></node>
+  <node pkg="block_actuator" exec="task_executor" name="task_executor" output="screen"/>
+  <node pkg="block_actuator" exec="actuator" name="actuator" output="screen">
+    <param from="$(var params)"/>
+    <param name="require_serial_health" value="$(var serial)"/>
+    <param name="autonomous" value="$(var autonomous)"/>
+    <param name="autonomous_target_class" value="$(var target_class)"/>
+    <param name="task_mode" value="$(var task)"/>
+  </node>
+  <node pkg="serial_minimal" exec="serial_node" name="serial_node" if="$(var serial)" output="screen"><param from="$(var params)"/></node>
+</launch>

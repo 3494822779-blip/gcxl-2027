@@ -2,7 +2,7 @@
 
 动作 Goal、取消、超时和代码映射见 [项目功能与动作接口](project_actions.md)。`autonomous`（默认 false）和 `task_mode` 是 actuator 启动参数，由 launch 传入；运行中只读。目标型抓取必须显式指定类别；`discard_after: true` 和丢弃动作均被拒绝。
 
-配置文件：`ros2_ws/src/block_perception/config/perception.yaml`。每个节点只读与自己同名的小节。
+配置文件：`ros2_ws/src/block_bringup/config/perception.yaml`。每个节点只读与自己同名的小节。
 改完 yaml 要重新构建（安装目录里是副本）：
 
 ```bash
@@ -171,7 +171,7 @@ alignment 新增 `reverse_speed=0.1 m/s` 和 `grasp_pitch_tol=0.0296706 rad`；�
 
 ## 左右夹爪闭合角度与任务记忆
 
-在 `ros2_ws/src/block_perception/config/perception.yaml` 的 `actuator.ros__parameters` 中修改：
+在 `ros2_ws/src/block_bringup/config/perception.yaml` 的 `actuator.ros__parameters` 中修改：
 
 ```yaml
 left_claw_close_deg: 0.0

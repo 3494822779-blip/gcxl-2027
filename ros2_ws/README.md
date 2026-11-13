@@ -55,13 +55,13 @@ USB 相机由原生节点直接 V4L2 mmap 采集，默认请求 1280×720@60。�
 
 修改后重新构建并 source `ros2_ws/install_gcxl/setup.bash`。配置集中于 `perception.yaml` 的 `perception` 节，不再使用旧 camera/detector/tracker 配置节。`exposure` 和旧图像输入／视频文件回放入口已移除。
 
-`ros2_ws/src/block_perception/config/infer_blocks.txt` 已配置当前项目的 ONNX、独立 FP16 engine、训练模型标签和 parser 路径。迁移目录后需要同步修改这些绝对路径并重新编译。构建采用 `build_gcxl/install_gcxl`，避免复用迁移前含旧绝对路径的 CMake 缓存。
+`ros2_ws/src/block_bringup/config/infer_blocks.txt` 已配置当前项目的 ONNX、独立 FP16 engine、训练模型标签和 parser 路径。迁移目录后需要同步修改这些绝对路径并重新编译。构建采用 `build_gcxl/install_gcxl`，避免复用迁移前含旧绝对路径的 CMake 缓存。
 
 重新导出和构建模型：
 
 ```bash
 cd /home/nvidia/project/gcxl-2027/models/yolov8n_gcxl_aug
-/usr/bin/python3 ../../utils/export_yoloV8.py -w best.pt
+/usr/bin/python3 ../../scripts/model/export_yoloV8.py -w best.pt
 /usr/src/tensorrt/bin/trtexec --onnx=best.onnx \
   --saveEngine=best_b1_gpu0_fp16.engine --fp16 --skipInference
 cd ../..
@@ -98,7 +98,7 @@ ros2 topic pub --once /target/reset std_msgs/msg/Bool '{data: true}'
 
 ```bash
 ros2 run block_deepstream perception --ros-args \
-  --params-file ros2_ws/src/block_perception/config/perception.yaml -p headless:=true
+  --params-file ros2_ws/src/block_bringup/config/perception.yaml -p headless:=true
 ```
 
 `headless:=true` 保留 GPU OSD 绘制、使用 fakesink，适合验证；`display:=false` 完全关闭显示分支。

@@ -42,6 +42,18 @@ def test_lock_rebinding_off_or_without_time():
     assert lock.select([rbox(6, 100, 200, 300, 250)]) is None
 
 
+def test_lock_never_rebinds_to_id_seen_before_loss():
+    lock = Lock(rebind_iou=0.3, rebind_timeout=3.0)
+    target = rbox(5, 100, 200, 300, 250)
+    obstacle = rbox(3, 105, 205, 295, 240)
+    assert lock.select([target, obstacle], 1.0).track_id == 5
+    # The original ID disappears, while the overlapping same-class obstacle ID remains.
+    assert lock.select([obstacle], 1.2) is None
+    replacement = rbox(6, 105, 205, 295, 245)
+    assert lock.select([obstacle, replacement], 1.4) is replacement
+    assert lock.id == 6
+
+
 def test_filter_prediction_noise_and_ordering():
     rng = np.random.default_rng(8)
     kf = CVFilter()

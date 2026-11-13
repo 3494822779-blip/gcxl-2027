@@ -13,9 +13,9 @@ from rclpy.clock import Clock, ClockType
 from rclpy.qos import qos_profile_sensor_data, QoSProfile, DurabilityPolicy
 from rcl_interfaces.msg import ParameterDescriptor
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool, String, Header
 from std_srvs.srv import Trigger
-from block_interfaces.msg import AlignmentCommand, GripperAngles
+from block_interfaces.msg import AlignmentCommand, GripperAngles, TargetSearch
 from .nodes import ConfigNode, run, seconds
 from .sweep import Sweep
 from .action_api import ActionAPI, TARGET_OPERATIONS
@@ -78,6 +78,9 @@ class Actuator(ConfigNode):
         self.configure(dict(camera_servo=False, camera_fixed_deg=0.,
                             track_width=0.2, wheel_speed_scale=1000., max_wheel_speed=0.5, min_turn_speed=0.1,
                             cam_min_deg=0., cam_max_deg=90., search_pitch_speed_deg=20.,
+                            search_dwell_sec=.15,
+                            search_turn_sec=.35, search_turn_speed_mps=.17,
+                            search_max_attempts=3,
                             grasp_pitch_deg=40., grasp_pitch_tol=math.radians(1.7), claw_open_pitch_deg=20.,
                             claw_init_deg=0., claw_max_deg=90., claw_min_deg=-30.,
                             sweep_claw_deg=-30., sweep_overlap=0.5, sweep_weight=0.2,
@@ -106,6 +109,7 @@ class Actuator(ConfigNode):
         self.action = None
         self.resume_after = 0.
         self.finished_pub = self.create_publisher(AlignmentCommand, 'task/grasp_finished', 10)
+        self.search_pub = self.create_publisher(TargetSearch, 'task/target_search', 10)
         self.cmd = None
         self.grip = None
         self.pitch = None
@@ -269,6 +273,10 @@ class Actuator(ConfigNode):
             return
         if not self.action_api.allows_grasp():
             return
+        # Remember the actual controller convention. Invalid/lost commands often
+        # carry zero error/yaw and must not overwrite the last real steering side.
+        self.search_yaw_sign = (math.copysign(1., msg.yaw_rate)
+                                if msg.yaw_rate else 0.)
         if self.formal_track_id is None:
             self.formal_track_id = msg.track_id
         if msg.track_id != self.formal_track_id:
@@ -353,6 +361,12 @@ class Actuator(ConfigNode):
         self.sweep_last_time = None
         self.search_direction = 0
         self.search_completed = False
+        self.search_turn_remaining = 0.
+        self.search_dwell_remaining = 0.
+        self.search_last_time = None
+        self.search_side = 0
+        self.search_yaw_sign = 0.
+        self.search_attempts = 0
         self.formal_track_id = None
         self.opened_at = None
         self.opening_angles = None
@@ -366,6 +380,12 @@ class Actuator(ConfigNode):
         self.tracking_motion = 0.
         self.motion_time = None
         self.motion_active = False
+
+    def publish_search(self, active, stationary=True):
+        if self.action_api.first_id:
+            self.search_pub.publish(TargetSearch(
+                header=Header(stamp=self.get_clock().now().to_msg()), task_id=self.action_api.first_id,
+                active=active, stationary=stationary))
 
     def finish_first(self, now):
         if (self.action_api.goal is not None and
@@ -483,28 +503,70 @@ class Actuator(ConfigNode):
             sweeping = self.sweep is not None and not self.sweep.done
             if self.action_api.allows_grasp() and self.formal_track_id is not None:
                 valid = valid and c.track_id == self.formal_track_id
+            if valid and (self.search_direction or self.search_completed):
+                # Any real observation ends the current search and gives the next loss a fresh
+                # one-pass budget.  This also lets the selector resume normal rebinding.
+                self.search_direction = 0
+                self.search_turn_remaining = self.search_dwell_remaining = 0.
+                self.search_completed = False
+                self.publish_search(False)
             if servo and not pitch_fresh:
                 valid = False
             if not valid and servo and pitch_fresh and self.action_api.allows_grasp() and self.formal_track_id is not None and not self.search_completed:
                 if not self.search_direction:
-                    self.search_direction = 1
-                    self.dbg.event('target_search', phase='searching_down', track_id=self.formal_track_id)
-                self.cam_target += self.search_direction * p['search_pitch_speed_deg'] * dt
-                limit = p['cam_max_deg'] if self.search_direction > 0 else p['cam_min_deg']
-                if ((self.search_direction > 0 and self.cam_target >= limit) or
-                        (self.search_direction < 0 and self.cam_target <= limit)):
-                    self.cam_target = limit
-                    if self.search_direction < 0:
-                        self.search_direction = 0
+                    if self.search_attempts >= p['search_max_attempts']:
                         self.search_completed = True
+                        self.dbg.event('target_search', phase='search_exhausted',
+                                       track_id=self.formal_track_id, attempts=self.search_attempts)
                     else:
-                        self.search_direction = -1
-                    self.dbg.event('target_search', phase='search_exhausted' if self.search_completed else 'searching_up',
-                                   track_id=self.formal_track_id)
+                        self.search_direction = 1
+                        self.search_side = self.search_yaw_sign
+                        self.search_attempts += 1
+                        self.search_turn_remaining = p['search_turn_sec']
+                        self.search_last_time = steady
+                        self.publish_search(True, stationary=False)
+                        self.dbg.event('target_search', phase='turning', track_id=self.formal_track_id,
+                                       side=self.search_side)
+                if not self.search_completed:
+                    elapsed = min(max(steady - (self.search_last_time or steady), 0.), .1)
+                    self.search_last_time = steady
+                    if self.search_turn_remaining > 0 and self.search_side:
+                        self.search_turn_remaining = max(0., self.search_turn_remaining - elapsed)
+                        # Low-speed in-place turn toward the last observed horizontal side.
+                        lw, rw = wheel_speeds(
+                            0., self.search_side * p['search_turn_speed_mps'] * 2 / p['track_width'],
+                            p['track_width'], p['max_wheel_speed'], p['min_turn_speed'])
+                        self.publish_search(True, stationary=False)
+                    elif self.search_dwell_remaining < p['search_dwell_sec']:
+                        self.search_dwell_remaining += elapsed
+                        lw = rw = 0.
+                        self.publish_search(True, stationary=True)
+                    else:
+                        self.publish_search(True, stationary=True)
+                    # Hold the camera still during the chassis turn and settle dwell,
+                    # so the first rebind check uses a geometrically comparable image.
+                    if (not self.search_side or
+                            (self.search_turn_remaining <= 0 and
+                             self.search_dwell_remaining >= p['search_dwell_sec'])):
+                        self.cam_target += self.search_direction * p['search_pitch_speed_deg'] * dt
+                    limit = p['cam_max_deg'] if self.search_direction > 0 else p['cam_min_deg']
+                    if ((self.search_direction > 0 and self.cam_target >= limit) or
+                            (self.search_direction < 0 and self.cam_target <= limit)):
+                        self.cam_target = limit
+                        if self.search_direction < 0:
+                            self.search_direction = 0
+                            self.search_completed = True
+                        else:
+                            self.search_direction = -1
+                        self.dbg.event('target_search', phase='search_exhausted' if self.search_completed else 'searching_up',
+                                       track_id=self.formal_track_id)
+                if self.search_completed:
+                    self.publish_search(False)
             else:
                 if self.search_direction:
                     self.dbg.event('target_search', phase='reacquired', track_id=self.formal_track_id)
                 self.search_direction = 0
+                self.publish_search(False)
             if valid:
                 bias = 0.
                 settling = False

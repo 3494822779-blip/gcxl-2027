@@ -12,7 +12,7 @@ from rclpy.signals import SignalHandlerOptions
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Bool
 from sensor_msgs.msg import JointState
-from block_interfaces.msg import FrameMetadata, Target, AlignmentCommand, TargetTask
+from block_interfaces.msg import FrameMetadata, Target, AlignmentCommand, TargetTask, TargetSearch
 from .first_grasp import candidates, obstacle_for
 from .core import Lock, CVFilter, rate, validate
 from .debug_log import DebugLog
@@ -86,18 +86,28 @@ class ConfigNode(Node):
 class Selector(ConfigNode):
     def __init__(self, name='selector'):
         super().__init__(name)
-        self.configure(dict(rebind_iou=0.3, rebind_timeout=3.0))
+        self.configure(dict(rebind_iou=0.3, rebind_timeout=3.0, search_rebind_iou=0.1))
         self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
         self.first_id = 0
         self.target_class = None
         self.task_active = False
         self.last_task_id = 0
         self.last_stamp = None
+        self.search_state = None
+        self.search_received = None
         self.create_subscription(TargetTask, 'task/target_grasp', self.task_request,
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.pub = self.create_publisher(Target, 'target/raw', 10)
         self.create_subscription(FrameMetadata, 'tracks_meta', self.frame, qos_profile_sensor_data)
         self.create_subscription(Bool, 'target/reset', self.reset, 10)
+        self.create_subscription(TargetSearch, 'task/target_search', self.search, 10)
+
+    def search(self, msg):
+        if not self.task_active or msg.task_id != self.first_id:
+            return
+        if self.search_state is not None and seconds(msg.header.stamp) <= seconds(self.search_state.header.stamp):
+            return
+        self.search_state, self.search_received = msg, time.monotonic()
 
     def update(self, params):
         result = super().update(params)
@@ -112,6 +122,7 @@ class Selector(ConfigNode):
             self.last_task_id = self.first_id = msg.task_id
             self.target_class = msg.target_class_id
             self.task_active = True
+            self.search_state = self.search_received = None
             # Rebinding follows the same block when the tracker re-creates it under a new ID
             # (e.g. at the image border); the actuator adopts the rebound ID.
             self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
@@ -128,6 +139,7 @@ class Selector(ConfigNode):
             self.task_active = False
             self.lock = Lock(self.settings['rebind_iou'], self.settings['rebind_timeout'])
             self.last_stamp = None
+            self.search_state = self.search_received = None
             self.pub.publish(Target(header=self.get_header()))
 
     def get_header(self):
@@ -144,7 +156,13 @@ class Selector(ConfigNode):
             self.pub.publish(Target(header=msg.header))
             return
         boxes = candidates(msg.boxes, self.target_class) if self.task_active else msg.boxes
-        b = self.lock.select(boxes, stamp)
+        search = self.search_state
+        searching = (self.task_active and search is not None and search.active and
+                     0 <= stamp - seconds(search.header.stamp) <= 0.25 and
+                     0 <= time.monotonic() - self.search_received <= 0.25)
+        b = self.lock.select(boxes, stamp, known_ids=(x.track_id for x in msg.boxes),
+            searching=searching, stationary=not searching or search.stationary,
+            search_iou=self.settings['search_rebind_iou'])
         if self.lock.id != prev_id:
             self.dbg.event('lock_change', old=prev_id, new=self.lock.id, boxes=len(msg.boxes),
                            rebound=prev_id is not None)

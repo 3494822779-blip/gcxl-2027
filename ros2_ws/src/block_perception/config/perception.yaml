@@ -39,11 +39,13 @@ first_grasp:                       # 兼容入口，与 selector 使用同一目
   ros__parameters:
     rebind_iou: 0.3
     rebind_timeout: 3.0
+    search_rebind_iou: 0.1
 
 selector:                          # 目标选择与锁定
   ros__parameters:
     rebind_iou: 0.3                # [0, 1]；锁定的 ID 消失后，同类别、与最后位置框的 IoU 不低于此值的新 ID 视为同一个物块并接管；0=关闭
     rebind_timeout: 3.0            # 秒；最后一次看到锁定目标之后，超过此时长不再接管新 ID
+    search_rebind_iou: 0.1         # 搜索停住并重新判定时允许的较低 IoU；仍排除丢失前已出现过的 ID
 
 filter:                            # 卡尔曼滤波，状态 [x, y, vx, vy]，像素坐标、秒
   ros__parameters:
@@ -108,6 +110,10 @@ actuator:                          # 控制量 -> 串口指令（serial_tx），
     min_turn_speed: 0.17            # m/s；只要有转向指令，每侧轮子的转向分量至少这么大（×scale 即下位机收到的值），
                                    # 避免小偏差时左右轮差太小、电机不动；0 = 关闭
     search_pitch_speed_deg: 20.0   # 丢失原目标时先低头再抬头搜索一轮，度/秒
+    search_dwell_sec: 0.15         # 原地转向后停住再用图像重绑定
+    search_turn_sec: 0.35          # 先向目标最后所在水平侧低速原地转动
+    search_turn_speed_mps: 0.17    # 搜索转向每侧轮速，至少达到 min_turn_speed
+    search_max_attempts: 3         # 每任务最多触发搜索的次数
     cam_min_deg: 0.0               # 相机舵机角度指令下限（度，0=回正）
     cam_max_deg: 90.0              # 上限（度，正=低头）；alignment 的俯仰速度在此范围内积分成角度
     claw_open_pitch_deg: 22.0      # 度；实际相机低头达到此角度，按当时宽度只张爪一次

@@ -272,7 +272,10 @@ class ActionAPI:
         elif g.operation == 'grasp' or g.operation in TARGET_OPERATIONS:
             done = n.state == 'done'
         if done:
-            self.finish(True, 'completed (timed motion is not physical grasp/odometry confirmation)')
+            message = ('completed; physical grasp unconfirmed'
+                       if g.operation == 'grasp' or g.operation in TARGET_OPERATIONS
+                       else 'completed (timed motion is not physical grasp/odometry confirmation)')
+            self.finish(True, message)
         return None
 
     def allows_command(self, msg):

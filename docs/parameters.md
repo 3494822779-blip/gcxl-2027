@@ -16,7 +16,7 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 
 节点内置 `camera_servo` 默认为 false，当前项目 YAML 已在 alignment 和 actuator 同时设为 true。下方旧参数表的内置默认值与项目配置可能不同；运行值以 YAML 和节点参数为准，动作规则以 [动作说明](project_actions.md) 为准。
 
-1. 选目标：下边缘离画面底最近的框，锁定 track_id；追踪器给同一物块换 ID 时锁定会跟过去 → `rebind_iou`、`rebind_timeout`。
+1. 选目标：下边缘离画面底最近的框，锁定 track_id；追踪器给同一物块换成此前未出现过的新 ID 时锁定才会跟过去 → `rebind_iou`、`rebind_timeout`、`search_rebind_iou`。
 2. 底盘转向：框中心 x 对准画面中心 → `deadzone_x`、`yaw_gain`、`max_yaw_rate`、`track_width`。
 3. 垂直方向：
    - `camera_servo=false`：下边缘还在目标带上方（物块远），底盘前进，直到下边缘进入画面下 20% → `bottom_target`、`deadzone_y`、`forward_speed`、`forward_max_error_x`。
@@ -31,8 +31,9 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 
 | 参数 | 默认 | 单位 | 说明 |
 |---|---|---|---|
-| `rebind_iou` | 0.3 | [0,1] | 新 ID 的框与最后一次看到锁定目标时的框，IoU 不低于此值且类别相同，就视为同一个物块。0=关闭 |
+| `rebind_iou` | 0.3 | [0,1] | 锁定目标丢失前从未出现过的新 ID，且与最后一次看到锁定目标的框同类、IoU 不低于此值，才允许接管。已出现过的障碍 ID 会被排除；0=关闭 |
 | `rebind_timeout` | 3.0 | 秒 | 最后一次看到锁定目标之后，超过此时长不再接管新 ID |
+| `search_rebind_iou` | 0.1 | (0, `rebind_iou`] | 搜索期间相机停住后恢复目标时的较低 IoU 阈值；搜索期间暂停 `rebind_timeout` 累计 |
 
 ## alignment（20 Hz 发布 /alignment/command，在线可调）
 
@@ -96,6 +97,10 @@ colcon build --base-paths ros2_ws/src --packages-select block_perception \
 | `claw_settle_sec` | 0.5 | 秒 | 视觉张爪、合爪及手动夹爪的等待时间 |
 | `pitch_timeout` | 0.25 | 秒 | 仅舵机开。俯仰反馈过期判定 |
 | `pitch_joint` | camera_pitch | | 仅舵机开。发布到 `camera/joint_states` 的关节名 |
+| `search_pitch_speed_deg` | 20.0 | 度/秒 | 每次丢失后俯仰最多搜索一轮；重新看到目标可再次搜索，任务总次数不清零 |
+| `search_turn_sec` / `search_turn_speed_mps` | 0.35 / 0.17 | 秒 / m/s | 俯仰搜索前按目标最后横向位置低速原地转向；速度通过 `min_turn_speed` 门槛 |
+| `search_dwell_sec` | 0.15 | 秒 | 转向后停住再做重绑定判断 |
+| `search_max_attempts` | 3 | 次/任务 | 目标反复进出画面时的搜索触发上限 |
 
 ## 目标型抓取与扫走参数
 

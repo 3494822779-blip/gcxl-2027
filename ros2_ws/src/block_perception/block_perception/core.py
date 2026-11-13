@@ -17,27 +17,44 @@ class Lock:
     """Locks one tracker ID. If the tracker drops it and re-creates the same block under a new ID
     (seen when a block touches the image border), the lock follows to the new ID: a candidate of the
     same class overlapping the last seen box by at least rebind_iou, within rebind_timeout seconds.
+    IDs seen before this loss (including predicted tracks) can never take over.
     Rebinding needs the frame time t; without it the lock only ever follows the original ID."""
     def __init__(self, rebind_iou=0.3, rebind_timeout=3.0):
         self.id = None
         self.rebind_iou, self.rebind_timeout = rebind_iou, rebind_timeout
         self.last = None
         self.last_t = None
+        self.seen_ids = set()
+        self.blocked_ids = None
+        self.select_t = None
+        self.rebind_elapsed = 0.
 
-    def select(self, boxes, t=None):
+    def select(self, boxes, t=None, *, known_ids=None, searching=False, stationary=True,
+               search_iou=None):
         candidates = [b for b in boxes if b.observed]
+        if self.id is not None and not any(b.track_id == self.id for b in candidates):
+            if self.blocked_ids is None:
+                self.blocked_ids = self.seen_ids.copy()
+        self.seen_ids.update(known_ids if known_ids is not None else (b.track_id for b in boxes))
+        if t is not None and self.select_t is not None and not searching:
+            self.rebind_elapsed += max(0., t - self.select_t)
+        self.select_t = t
         if self.id is None and candidates:
             self.id = max(candidates, key=lambda b: (b.y + b.height, b.confidence, -b.track_id)).track_id
         found = next((b for b in candidates if b.track_id == self.id), None)
-        if (found is None and t is not None and self.last is not None and self.rebind_iou > 0
-                and 0 <= t - self.last_t <= self.rebind_timeout):
-            near = [(iou(self.last, b), b) for b in candidates if b.class_id == self.last.class_id]
+        threshold = search_iou if searching and search_iou is not None else self.rebind_iou
+        if (found is None and t is not None and self.last_t is not None and self.rebind_iou > 0
+                and stationary and 0 <= self.rebind_elapsed <= self.rebind_timeout):
+            near = [(iou(self.last, b), b) for b in candidates
+                    if b.class_id == self.last.class_id and b.track_id not in (self.blocked_ids or ())]
             best = max(near, key=lambda c: c[0], default=None)
-            if best is not None and best[0] >= self.rebind_iou:
+            if best is not None and best[0] >= threshold:
                 found = best[1]
                 self.id = found.track_id
         if found is not None and t is not None:
             self.last, self.last_t = found, t
+            self.blocked_ids = None
+            self.rebind_elapsed = 0.
         return found
 
 
@@ -93,6 +110,9 @@ def validate(values):
         raise ValueError('rebind_iou must be in [0, 1]')
     if 'rebind_timeout' in values and values['rebind_timeout'] < 0:
         raise ValueError('rebind_timeout must not be negative')
+    if 'search_rebind_iou' in values and not 0 < values['search_rebind_iou'] <= values['rebind_iou']:
+        if values['rebind_iou'] != 0:
+            raise ValueError('search_rebind_iou must be in (0, rebind_iou]')
     for name in ['deadzone_x', 'deadzone_y']:
         if name in values and not 0 <= values[name] < 1:
             raise ValueError(f'{name} must be in [0, 1)')
@@ -133,9 +153,17 @@ def validate(values):
 
     if values.get('discard_enabled'):
         raise ValueError('discard is disabled')
-    for name in ('search_pitch_speed_deg', 'sweep_tau_sec', 'sweep_duration_sec', 'sweep_max_yaw_rate', 'sweep_near_multiplier'):
+    for name in ('search_pitch_speed_deg', 'search_dwell_sec',
+                 'search_turn_sec', 'search_turn_speed_mps',
+                 'sweep_tau_sec', 'sweep_duration_sec', 'sweep_max_yaw_rate', 'sweep_near_multiplier'):
         if name in values and values[name] <= 0:
             raise ValueError(f'{name} must be positive')
+    if 'search_turn_speed_mps' in values and values['search_turn_speed_mps'] > values['max_wheel_speed']:
+        raise ValueError('search_turn_speed_mps must not exceed max_wheel_speed')
+    if 'search_max_attempts' in values and (isinstance(values['search_max_attempts'], bool)
+                                            or not isinstance(values['search_max_attempts'], int)
+                                            or values['search_max_attempts'] < 1):
+        raise ValueError('search_max_attempts must be a positive integer')
     for name in ('sweep_weight', 'sweep_overlap'):
         if name in values and not 0 <= values[name] <= 1:
             raise ValueError(f'{name} must be in [0, 1]')

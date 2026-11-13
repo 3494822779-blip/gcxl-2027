@@ -427,6 +427,62 @@ def test_no_search_before_lock_or_with_fixed_camera(rig):
     assert n.search_direction == 0
 
 
+@pytest.mark.parametrize('target_x', [160., 480.])
+@pytest.mark.parametrize('yaw_gain', [-1.25, 1.25])
+@pytest.mark.parametrize('min_turn', [0., .17])
+def test_search_turn_matches_tracking_yaw_sign_and_motor_threshold(rig, target_x, yaw_gain, min_turn):
+    from block_interfaces.msg import Target
+    alignment, n = rig[2], rig[3]
+    alignment.set_parameters([Parameter('yaw_gain', value=yaw_gain)])
+    n.set_parameters([Parameter('camera_servo', value=True),
+                      Parameter('min_turn_speed', value=min_turn),
+                      Parameter('search_turn_speed_mps', value=.08)])
+    n.cam_target = 30.
+    target = Target(locked=True, valid=True, observed=True, first_grasp_id=1,
+                    class_id=2, track_id=9, image_width=640, image_height=480,
+                    x=target_x, y=240.)
+    target.header.stamp = alignment.get_clock().now().to_msg()
+    alignment.target(target)
+    alignment.tick()
+    n.command(alignment.pub.messages[-1])
+    pitch(n, 30.)
+    tracking = compute(n)
+    # Lost messages can contain zero error/yaw. Search must retain the actual
+    # last real steering side, including installations with inverted gain.
+    send(n, predicted=True)
+    left, right, *_ = compute(n)
+    assert (right - left) * (tracking[1] - tracking[0]) > 0.
+    expected = max(.08, min_turn) * n.settings['wheel_speed_scale']
+    assert abs(left) == pytest.approx(expected)
+    assert abs(right) == pytest.approx(expected)
+    assert left == -right
+
+
+def test_search_attempts_are_bounded_per_task(rig):
+    n, clock = rig[3], rig[4]
+    n.set_parameters([Parameter('camera_servo', value=True)])
+    n.cam_target = 45.
+    for attempt in range(n.settings['search_max_attempts']):
+        send(n, error_x=.5, yaw_rate=-.5)
+        pitch(n, 45.)
+        compute(n)
+        send(n, predicted=True)
+        assert compute(n)[:2] != (0., 0.)
+        assert n.search_attempts == attempt + 1
+        clock.t += .05
+    # Seeing the target again resets the pass, but never resets the task count.
+    send(n, error_x=.5, yaw_rate=-.5)
+    compute(n)
+    send(n, predicted=True)
+    assert compute(n)[:2] == (0., 0.)
+    angle = n.cam_target
+    clock.t += .05
+    assert compute(n)[:2] == (0., 0.) and n.cam_target == angle
+    assert n.search_completed and n.search_direction == 0
+    n.reset_sweep()
+    assert n.search_attempts == 0
+
+
 def test_search_finishes_after_one_pass(rig):
     n = rig[3]
     n.set_parameters([Parameter('camera_servo', value=True)])
@@ -445,7 +501,9 @@ def test_search_finishes_after_one_pass(rig):
     n.cmd = None
     angle = n.cam_target
     n.compute(n.cam_time + .1)
-    assert n.cam_target == angle
+    # A fresh observation starts a new search budget; a later loss is allowed
+    # to search again instead of remaining permanently exhausted.
+    assert n.cam_target > angle and n.search_direction != 0
     n.reset_sweep()
     assert not n.search_completed
 
